@@ -1,0 +1,24 @@
+{
+  "name": "pilates-manager",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm --filter @pilates-manager/api start:dev",
+    "build": "pnpm --filter @pilates-manager/api build",
+    "lint": "pnpm --filter @pilates-manager/api lint",
+    "typecheck": "pnpm --filter @pilates-manager/api typecheck",
+    "test": "pnpm --filter @pilates-manager/api test",
+    "test:e2e": "pnpm --filter @pilates-manager/api test:e2e",
+    "prisma:generate": "pnpm --filter @pilates-manager/api prisma:generate",
+    "prisma:validate": "pnpm --filter @pilates-manager/api prisma:validate",
+    "prisma:migrate": "pnpm --filter @pilates-manager/api prisma:migrate",
+    "prisma:seed": "pnpm --filter @pilates-manager/api prisma:seed"
+  },
+  "devDependencies": {
+    "@prisma/client": "6.19.3",
+    "prisma": "6.19.3"
+  },
+  "dependencies": {
+    "argon2": "0.41.1"
+  }
+}

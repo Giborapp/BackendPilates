@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pilates-manager-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pilates
+      POSTGRES_PASSWORD: pilates
+      POSTGRES_DB: pilates_manager
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pilates -d pilates_manager"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:

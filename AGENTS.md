@@ -1,0 +1,22 @@
+# pilates-manager project rules
+
+- All code must use strict TypeScript.
+- Do not use `any` except when unavoidable and documented at the usage site.
+- Important business rules must not live only in controllers.
+- Controllers must stay thin.
+- Business rules belong in services or domain services.
+- Every studio-owned operation must be filtered by the authenticated session `studioId`.
+- Queries must never trust a `studioId` sent by the client.
+- The `studioId` must come from authentication.
+- Every protected route must verify authentication and permission.
+- Hiding frontend buttons is never access control.
+- PINs, passwords, tokens, and refresh/device secrets must never be stored in plain text.
+- Sensitive information must not appear in logs.
+- Important changes must create audit records.
+- Migrations must never be deleted or rewritten after being applied.
+- Every new business rule must receive tests.
+- Before completing any task, run lint, typecheck, tests, and production build where applicable.
+- Update documentation when API contracts change.
+- Avoid unmaintained dependencies.
+- Do not implement out-of-scope features without recording the justification.
+- Do not build frontend code until explicitly requested.

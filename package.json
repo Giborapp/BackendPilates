@@ -12,6 +12,7 @@
     "prisma:generate": "pnpm --filter @pilates-manager/api prisma:generate",
     "prisma:validate": "pnpm --filter @pilates-manager/api prisma:validate",
     "prisma:migrate": "pnpm --filter @pilates-manager/api prisma:migrate",
+    "prisma:deploy": "pnpm --filter @pilates-manager/api prisma:deploy",
     "prisma:seed": "pnpm --filter @pilates-manager/api prisma:seed"
   },
   "devDependencies": {

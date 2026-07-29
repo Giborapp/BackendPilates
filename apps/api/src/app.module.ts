@@ -27,6 +27,7 @@ import { ReplacementCreditsModule } from './modules/replacement-credits/replacem
 import { AssessmentsModule } from './modules/assessments/assessments.module';
 import { FilesModule } from './modules/files/files.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { SetupModule } from './modules/setup/setup.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     AssessmentsModule,
     FilesModule,
     DashboardModule,
+    SetupModule,
   ],
   providers: [
     AppConfigService,

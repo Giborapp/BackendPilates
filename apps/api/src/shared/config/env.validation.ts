@@ -14,6 +14,7 @@ const envSchema = z.object({
   COOKIE_DOMAIN: z.string().optional().default(''),
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
   LOCAL_STORAGE_PATH: z.string().default('./storage'),
+  BOOTSTRAP_SETUP_TOKEN: z.string().min(32).optional(),
   S3_ENDPOINT: z.string().optional().default(''),
   S3_REGION: z.string().optional().default(''),
   S3_BUCKET: z.string().optional().default(''),

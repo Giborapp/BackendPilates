@@ -62,4 +62,8 @@ export class AppConfigService {
   get localStoragePath(): string {
     return this.config.get('LOCAL_STORAGE_PATH', { infer: true });
   }
+
+  get bootstrapSetupToken(): string | undefined {
+    return this.config.get('BOOTSTRAP_SETUP_TOKEN', { infer: true });
+  }
 }

@@ -48,3 +48,14 @@ The development seed creates:
 - Reception PIN: `7410`
 
 Demo seed must never be executed automatically in production.
+
+## Initial production setup
+
+For a new empty production database, create a one-time setup token:
+
+```env
+BOOTSTRAP_SETUP_TOKEN=replace-with-a-long-random-secret
+```
+
+Then call `POST /setup/demo` with header `x-setup-token`. The endpoint only works while
+there are no studios in the database.

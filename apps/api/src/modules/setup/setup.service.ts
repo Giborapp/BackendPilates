@@ -38,6 +38,13 @@ export class SetupService {
     const email = (dto.studioEmail ?? 'demo@pilates.local').trim().toLowerCase();
     const password = dto.studioPassword ?? 'Demo@123456';
     const now = new Date();
+    const passwordHash = await argon2.hash(password);
+    const staffInputs = await Promise.all(
+      DEMO_STAFF.map(async (member) => ({
+        ...member,
+        pinHash: await argon2.hash(member.pin),
+      })),
+    );
 
     const result = await this.prisma.$transaction(async (tx) => {
       const studio = await tx.studio.create({
@@ -45,20 +52,20 @@ export class SetupService {
           name: dto.studioName ?? 'Studio Demo Pilates',
           slug: 'studio-demo',
           email,
-          passwordHash: await argon2.hash(password),
+          passwordHash,
           phone: '+55 11 99999-0000',
           settings: { create: {} },
         },
       });
 
       const staff = await Promise.all(
-        DEMO_STAFF.map(async (member) =>
+        staffInputs.map((member) =>
           tx.staffMember.create({
             data: {
               studioId: studio.id,
               name: member.name,
               role: member.role,
-              pinHash: await argon2.hash(member.pin),
+              pinHash: member.pinHash,
               pinLookupHash: this.pinLookup(studio.id, member.pin),
             },
           }),

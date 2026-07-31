@@ -1,0 +1,1 @@
+ALTER TABLE "Student" ADD COLUMN "monthlyLessonLimit" INTEGER NOT NULL DEFAULT 0;

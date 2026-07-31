@@ -104,6 +104,7 @@ export class SetupService {
           phone: '+55 11 90000-0001',
           status: StudentStatus.ACTIVE,
           startDate: now,
+          monthlyLessonLimit: 8,
         },
       });
       const joao = await tx.student.create({
@@ -114,6 +115,7 @@ export class SetupService {
           phone: '+55 11 90000-0002',
           status: StudentStatus.ACTIVE,
           startDate: now,
+          monthlyLessonLimit: 8,
         },
       });
       const trialStudent = await tx.student.create({
@@ -122,6 +124,7 @@ export class SetupService {
           fullName: 'Clara Trial',
           phone: '+55 11 90000-0003',
           status: StudentStatus.TRIAL,
+          monthlyLessonLimit: 1,
         },
       });
       await tx.trialProcess.create({
@@ -248,8 +251,21 @@ export class SetupService {
           version: 1,
           createdByStaffId: proB.id,
           fields: [
-            { id: 'main_complaint', label: 'Queixa principal', type: 'long_text', required: true, order: 1 },
-            { id: 'pain_level', label: 'Nivel de dor', type: 'pain_scale', minimum: 0, maximum: 10, order: 2 },
+            {
+              id: 'main_complaint',
+              label: 'Queixa principal',
+              type: 'long_text',
+              required: true,
+              order: 1,
+            },
+            {
+              id: 'pain_level',
+              label: 'Nivel de dor',
+              type: 'pain_scale',
+              minimum: 0,
+              maximum: 10,
+              order: 2,
+            },
           ],
         },
       });

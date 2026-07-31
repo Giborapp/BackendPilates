@@ -40,6 +40,7 @@ export class CreateStudentDto {
   @IsOptional() @IsString() emergencyContactPhone?: string;
   @IsOptional() @IsDateString() startDate?: string;
   @IsOptional() @IsEnum(StudentStatus) status?: StudentStatus;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(200) monthlyLessonLimit?: number;
   @IsOptional() @IsString() generalNotes?: string;
   @IsOptional() @IsString() importantCareNotes?: string;
 }

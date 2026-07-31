@@ -23,3 +23,13 @@ Optional staff pairs:
 
 The response matches studio login: `{ studio, deviceExpiresAt }` and sets the
 `device_token` cookie. The client should redirect to PIN unlock after success.
+
+## Operational class flow
+
+- `POST /class-sessions` creates a one-off class time.
+- `POST /bookings` adds a saved student to a class.
+- `POST /attendance/mark` marks presence, absence, or justified absence.
+- `GET /dashboard` and `GET /class-sessions` return class bookings with attendance and student monthly lesson balance.
+
+Students accept `monthlyLessonLimit` on create/update. `monthlyLessonsUsed` and
+`monthlyLessonsRemaining` are calculated from the current month's attendance.

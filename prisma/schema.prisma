@@ -286,6 +286,7 @@ model Student {
   emergencyContactPhone String?
   startDate             DateTime?              @db.Date
   status                StudentStatus          @default(LEAD)
+  monthlyLessonLimit    Int                    @default(0)
   generalNotes          String?
   importantCareNotes    String?
   createdAt             DateTime               @default(now())

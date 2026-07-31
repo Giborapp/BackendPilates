@@ -2,6 +2,7 @@
 
 ## Main endpoints
 
+- `POST /auth/studio/register`: creates a studio account, initial staff PINs, and a device session.
 - `POST /auth/studio/login`: validates studio e-mail/password and creates a device session.
 - `GET /auth/device/status`: returns connected studio/device status.
 - `POST /auth/pin/unlock`: unlocks a staff session using a PIN.
@@ -16,3 +17,10 @@
 - `refresh_token`: rotating staff refresh token.
 
 Access tokens are returned in the response body and should be kept only in memory by clients.
+
+## Studio registration
+
+`POST /auth/studio/register` is public and rate limited. It accepts the studio name,
+studio e-mail/password, admin name/PIN, and optional professional/reception name/PIN pairs.
+PINs must follow the same PIN policy used by staff management and must be unique inside
+the new studio. Passwords, PINs, and device tokens are hashed before storage.

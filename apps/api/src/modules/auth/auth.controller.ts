@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { PinUnlockDto, StudioLoginDto } from './dto/auth.dto';
+import { PinUnlockDto, StudioLoginDto, StudioRegisterDto } from './dto/auth.dto';
 import { AppConfigService } from '@/shared/config/app-config.service';
 import { CurrentDevice } from '@/shared/auth/current-device.decorator';
 import { CurrentUser } from '@/shared/auth/current-user.decorator';
@@ -21,9 +21,37 @@ export class AuthController {
     private readonly config: AppConfigService,
   ) {}
 
+  @Post('studio/register')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async studioRegister(
+    @Body() dto: StudioRegisterDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.registerStudio({
+      studioName: dto.studioName,
+      email: dto.email,
+      password: dto.password,
+      adminName: dto.adminName,
+      adminPin: dto.adminPin,
+      professionalName: dto.professionalName,
+      professionalPin: dto.professionalPin,
+      receptionName: dto.receptionName,
+      receptionPin: dto.receptionPin,
+      deviceName: dto.deviceName,
+      userAgent: req.headers['user-agent'],
+    });
+    this.setCookie(res, 'device_token', result.deviceToken, result.expiresAt);
+    return { studio: result.studio, deviceExpiresAt: result.expiresAt };
+  }
+
   @Post('studio/login')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  async studioLogin(@Body() dto: StudioLoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async studioLogin(
+    @Body() dto: StudioLoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.auth.studioLogin({
       email: dto.email,
       password: dto.password,
@@ -45,7 +73,11 @@ export class AuthController {
   @ApiCookieAuth('device_token')
   @UseGuards(DeviceAuthGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  async unlock(@CurrentDevice() device: DeviceContext, @Body() dto: PinUnlockDto, @Res({ passthrough: true }) res: Response) {
+  async unlock(
+    @CurrentDevice() device: DeviceContext,
+    @Body() dto: PinUnlockDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.auth.unlockWithPin(device.studioId, device.deviceSessionId, dto.pin);
     this.setCookie(res, 'refresh_token', result.refreshToken, result.refreshExpiresAt);
     return { accessToken: result.accessToken, staff: result.staff };
@@ -75,7 +107,11 @@ export class AuthController {
   @Post('studio/logout')
   @ApiCookieAuth('device_token')
   @UseGuards(DeviceAuthGuard)
-  async logout(@CurrentDevice() device: DeviceContext, @Req() req: Request & { user?: AuthenticatedUser }, @Res({ passthrough: true }) res: Response) {
+  async logout(
+    @CurrentDevice() device: DeviceContext,
+    @Req() req: Request & { user?: AuthenticatedUser },
+    @Res({ passthrough: true }) res: Response,
+  ) {
     await this.auth.studioLogout(device.studioId, device.deviceSessionId, req.user?.staffMemberId);
     res.clearCookie('device_token');
     res.clearCookie('refresh_token');

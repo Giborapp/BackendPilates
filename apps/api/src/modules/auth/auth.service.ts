@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
@@ -11,10 +13,25 @@ import { AppConfigService } from '@/shared/config/app-config.service';
 import { AuditService } from '../audit/audit.service';
 import { mergePermissions } from '@/shared/auth/permissions';
 import { addDuration, randomToken, sha256 } from './token.util';
+import { assertRegistrationPinsAllowed } from './studio-registration';
 
 type StudioLoginInput = {
   email: string;
   password: string;
+  deviceName?: string;
+  userAgent?: string;
+};
+
+type StudioRegisterInput = {
+  studioName: string;
+  email: string;
+  password: string;
+  adminName: string;
+  adminPin: string;
+  professionalName?: string;
+  professionalPin?: string;
+  receptionName?: string;
+  receptionPin?: string;
   deviceName?: string;
   userAgent?: string;
 };
@@ -34,6 +51,120 @@ export class AuthService {
     private readonly config: AppConfigService,
     private readonly audit: AuditService,
   ) {}
+
+  async registerStudio(input: StudioRegisterInput) {
+    const email = input.email.trim().toLowerCase();
+    const studioName = input.studioName.trim();
+    const professionalName = input.professionalName?.trim();
+    const receptionName = input.receptionName?.trim();
+    assertRegistrationPinsAllowed([
+      { label: 'Admin PIN', pin: input.adminPin },
+      { label: 'Professional PIN', pin: input.professionalPin },
+      { label: 'Reception PIN', pin: input.receptionPin },
+    ]);
+    assertOptionalStaffComplete('Professional', professionalName, input.professionalPin);
+    assertOptionalStaffComplete('Reception', receptionName, input.receptionPin);
+
+    const existing = await this.prisma.studio.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException('A studio with this e-mail already exists');
+    }
+
+    const now = new Date();
+    const rawDeviceToken = randomToken();
+    const deviceExpiresAt = addDuration(now, this.config.deviceSessionExpiresIn);
+    const passwordHash = await argon2.hash(input.password);
+    const adminPinHash = await argon2.hash(input.adminPin);
+    const professionalPinHash = input.professionalPin
+      ? await argon2.hash(input.professionalPin)
+      : undefined;
+    const receptionPinHash = input.receptionPin ? await argon2.hash(input.receptionPin) : undefined;
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const studio = await tx.studio.create({
+        data: {
+          name: studioName,
+          slug: await this.uniqueSlug(studioName),
+          email,
+          passwordHash,
+          settings: { create: {} },
+        },
+      });
+
+      const admin = await tx.staffMember.create({
+        data: {
+          studioId: studio.id,
+          name: input.adminName.trim(),
+          role: Role.ADMIN,
+          pinHash: adminPinHash,
+          pinLookupHash: sha256(`${studio.id}:${input.adminPin}`),
+        },
+      });
+
+      if (professionalName && input.professionalPin && professionalPinHash) {
+        await tx.staffMember.create({
+          data: {
+            studioId: studio.id,
+            name: professionalName,
+            role: Role.PROFESSIONAL,
+            pinHash: professionalPinHash,
+            pinLookupHash: sha256(`${studio.id}:${input.professionalPin}`),
+          },
+        });
+      }
+
+      if (receptionName && input.receptionPin && receptionPinHash) {
+        await tx.staffMember.create({
+          data: {
+            studioId: studio.id,
+            name: receptionName,
+            role: Role.RECEPTION,
+            pinHash: receptionPinHash,
+            pinLookupHash: sha256(`${studio.id}:${input.receptionPin}`),
+          },
+        });
+      }
+
+      const device = await tx.deviceSession.create({
+        data: {
+          studioId: studio.id,
+          tokenHash: sha256(rawDeviceToken),
+          name: input.deviceName,
+          userAgent: input.userAgent,
+          expiresAt: deviceExpiresAt,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          studioId: studio.id,
+          actorStaffId: admin.id,
+          action: 'studio.register',
+          entityType: 'Studio',
+          entityId: studio.id,
+          metadata: { deviceName: input.deviceName ?? null },
+        },
+      });
+
+      return { studio, device };
+    });
+
+    const deviceToken = await this.jwt.signAsync(
+      { sub: created.device.id, studioId: created.studio.id, typ: 'device' },
+      { secret: this.config.deviceTokenSecret, expiresIn: this.config.deviceSessionExpiresIn },
+    );
+
+    return {
+      deviceToken,
+      studio: {
+        id: created.studio.id,
+        name: created.studio.name,
+        timezone: created.studio.timezone,
+        locale: created.studio.locale,
+      },
+      expiresAt: deviceExpiresAt,
+    };
+  }
 
   async studioLogin(input: StudioLoginInput) {
     const email = input.email.trim().toLowerCase();
@@ -71,7 +202,12 @@ export class AuthService {
     });
     return {
       deviceToken: deviceJwt,
-      studio: { id: studio.id, name: studio.name, timezone: studio.timezone, locale: studio.locale },
+      studio: {
+        id: studio.id,
+        name: studio.name,
+        timezone: studio.timezone,
+        locale: studio.locale,
+      },
       expiresAt,
     };
   }
@@ -111,7 +247,10 @@ export class AuthService {
     }
     this.pinAttempts.delete(key);
     const tokens = await this.createStaffSession(studioId, deviceSessionId, staff.id);
-    await this.prisma.staffMember.update({ where: { id: staff.id }, data: { lastLoginAt: new Date() } });
+    await this.prisma.staffMember.update({
+      where: { id: staff.id },
+      data: { lastLoginAt: new Date() },
+    });
     await this.audit.record({
       studioId,
       actorStaffId: staff.id,
@@ -152,7 +291,11 @@ export class AuthService {
       where: { id: existing.id },
       data: { revokedAt: new Date() },
     });
-    return this.createStaffSession(existing.studioId, existing.deviceSessionId, existing.staffMemberId);
+    return this.createStaffSession(
+      existing.studioId,
+      existing.deviceSessionId,
+      existing.staffMemberId,
+    );
   }
 
   async lock(studioId: string, staffMemberId: string): Promise<void> {
@@ -169,7 +312,11 @@ export class AuthService {
     });
   }
 
-  async studioLogout(studioId: string, deviceSessionId: string, actorStaffId?: string): Promise<void> {
+  async studioLogout(
+    studioId: string,
+    deviceSessionId: string,
+    actorStaffId?: string,
+  ): Promise<void> {
     await this.prisma.$transaction([
       this.prisma.refreshSession.updateMany({
         where: { studioId, deviceSessionId, revokedAt: null },
@@ -192,7 +339,14 @@ export class AuthService {
   async me(studioId: string, staffMemberId: string) {
     const staff = await this.prisma.staffMember.findFirst({
       where: { id: staffMemberId, studioId, active: true, archivedAt: null },
-      select: { id: true, name: true, photoUrl: true, role: true, permissions: true, lastLoginAt: true },
+      select: {
+        id: true,
+        name: true,
+        photoUrl: true,
+        role: true,
+        permissions: true,
+        lastLoginAt: true,
+      },
     });
     if (!staff) {
       throw new UnauthorizedException('Invalid session');
@@ -209,7 +363,11 @@ export class AuthService {
     });
   }
 
-  private async createStaffSession(studioId: string, deviceSessionId: string, staffMemberId: string) {
+  private async createStaffSession(
+    studioId: string,
+    deviceSessionId: string,
+    staffMemberId: string,
+  ) {
     const now = new Date();
     const refreshExpiresAt = addDuration(now, this.config.refreshTokenExpiresIn);
     const refreshSession = await this.prisma.refreshSession.create({
@@ -234,5 +392,39 @@ export class AuthService {
       data: { tokenHash: await argon2.hash(refreshToken) },
     });
     return { accessToken, refreshToken, refreshExpiresAt };
+  }
+
+  private async uniqueSlug(name: string): Promise<string> {
+    const base = slugify(name);
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const suffix = attempt === 0 ? '' : `-${attempt + 1}`;
+      const slug = `${base}${suffix}`;
+      const existing = await this.prisma.studio.findUnique({ where: { slug } });
+      if (!existing) {
+        return slug;
+      }
+    }
+    return `${base}-${randomToken().slice(0, 8)}`;
+  }
+}
+
+function slugify(value: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug.length > 0 ? slug : `studio-${randomToken().slice(0, 8)}`;
+}
+
+function assertOptionalStaffComplete(
+  label: string,
+  name: string | undefined,
+  pin: string | undefined,
+): void {
+  if ((name && !pin) || (!name && pin)) {
+    throw new BadRequestException(`${label} name and PIN must be filled together`);
   }
 }

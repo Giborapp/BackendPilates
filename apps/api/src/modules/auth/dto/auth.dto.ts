@@ -23,3 +23,54 @@ export class PinUnlockDto {
   @Matches(/^\d{4}$/)
   pin!: string;
 }
+
+export class StudioRegisterDto {
+  @ApiProperty({ example: 'Studio Bella Pilates' })
+  @IsString()
+  @Length(2, 120)
+  studioName!: string;
+
+  @ApiProperty({ example: 'contato@bellapilates.com.br' })
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty({ example: 'Senha@123456' })
+  @IsString()
+  @MinLength(8)
+  password!: string;
+
+  @ApiProperty({ example: 'Marina Admin' })
+  @IsString()
+  @Length(2, 120)
+  adminName!: string;
+
+  @ApiProperty({ example: '9071' })
+  @IsString()
+  @Matches(/^\d{4}$/)
+  adminPin!: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  professionalName?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}$/)
+  professionalPin?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  receptionName?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}$/)
+  receptionPin?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  deviceName?: string;
+}

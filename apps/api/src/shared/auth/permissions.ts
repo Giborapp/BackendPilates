@@ -1,6 +1,7 @@
 import { SetMetadata } from '@nestjs/common';
 
 export const PERMISSIONS_KEY = 'permissions';
+export const ANY_PERMISSIONS_KEY = 'any_permissions';
 
 export const PERMISSIONS = [
   'dashboard.read',
@@ -36,6 +37,9 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 export const RequirePermissions = (...permissions: Permission[]) =>
   SetMetadata(PERMISSIONS_KEY, permissions);
+
+export const RequireAnyPermission = (...permissions: Permission[]) =>
+  SetMetadata(ANY_PERMISSIONS_KEY, permissions);
 
 export function defaultPermissionsForRole(role: string): Permission[] {
   if (role === 'ADMIN') {

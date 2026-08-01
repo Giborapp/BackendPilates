@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AttendanceStatus } from '@prisma/client';
+import { AttendanceStatus, ClassSessionStatus } from '@prisma/client';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 
@@ -90,7 +90,7 @@ export class AttendanceService {
   }
 
   async markAutomaticNoShows(studioId: string, now = new Date()): Promise<number> {
-    const threshold = new Date(now.getTime() - 3 * 60 * 60_000);
+    const threshold = automaticNoShowThreshold(now);
     const bookings = await this.prisma.classBooking.findMany({
       where: {
         studioId,
@@ -139,7 +139,10 @@ export class AttendanceService {
         status: { in: CONSUMING_ATTENDANCE_STATUSES },
         classBooking: {
           studentId: { in: studentIds },
-          classSession: { startsAt: { gte: start, lt: end } },
+          classSession: {
+            startsAt: { gte: start, lt: end },
+            status: { not: ClassSessionStatus.CANCELLED },
+          },
         },
       },
       _count: { _all: true },
@@ -176,4 +179,8 @@ export function withLessonBalance<T extends { id: string; monthlyLessonLimit: nu
 
 export function attendanceConsumesLesson(status: AttendanceStatus): boolean {
   return CONSUMING_ATTENDANCE_STATUSES.includes(status);
+}
+
+export function automaticNoShowThreshold(now: Date): Date {
+  return new Date(now.getTime() - 3 * 60 * 60_000);
 }

@@ -298,6 +298,7 @@ model Student {
   bookings              ClassBooking[]
   credits               ReplacementCredit[]
   assessments           Assessment[]
+  recurringEnrollments  RecurringEnrollment[]
 
   @@index([studioId, status])
 }
@@ -387,6 +388,7 @@ model RecurringClassSchedule {
   capacity        Int
   startsOn        DateTime       @db.Date
   endsOn          DateTime?      @db.Date
+  pauseUntil      DateTime?      @db.Date
   active          Boolean        @default(true)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
@@ -395,8 +397,24 @@ model RecurringClassSchedule {
   room            Room           @relation(fields: [roomId], references: [id])
   professional    StaffMember    @relation(fields: [professionalId], references: [id])
   sessions        ClassSession[]
+  enrollments     RecurringEnrollment[]
 
   @@index([studioId, active, weekday])
+}
+
+model RecurringEnrollment {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  studioId            String                 @db.Uuid
+  recurringScheduleId String                 @db.Uuid
+  studentId           String                 @db.Uuid
+  active              Boolean                @default(true)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  recurringSchedule   RecurringClassSchedule @relation(fields: [recurringScheduleId], references: [id])
+  student             Student                @relation(fields: [studentId], references: [id])
+
+  @@unique([studioId, recurringScheduleId, studentId])
+  @@index([studioId, studentId, active])
 }
 
 model ClassSession {

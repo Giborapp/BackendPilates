@@ -132,6 +132,26 @@ export class CreateScheduleDto {
   @IsOptional() @IsDateString() endsOn?: string;
 }
 
+export class UpdateScheduleDto {
+  @IsOptional() @IsUUID() unitId?: string;
+  @IsOptional() @IsUUID() roomId?: string;
+  @IsOptional() @IsUUID() professionalId?: string;
+  @IsOptional() @IsEnum(Weekday) weekday?: Weekday;
+  @IsOptional() @IsString() startTime?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(15) durationMinutes?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) capacity?: number;
+  @IsOptional() @IsDateString() startsOn?: string;
+  @IsOptional() @IsDateString() endsOn?: string;
+}
+
+export class PauseScheduleDto {
+  @Type(() => Number) @IsInt() @Min(1) @Max(52) weeks!: number;
+}
+
+export class CreateRecurringEnrollmentDto {
+  @IsUUID() studentId!: string;
+}
+
 export class GenerateSessionsDto {
   @IsDateString() from!: string;
   @IsDateString() to!: string;
@@ -144,6 +164,15 @@ export class CreateClassSessionDto {
   @IsDateString() startsAt!: string;
   @IsDateString() endsAt!: string;
   @Type(() => Number) @IsInt() @Min(1) capacity!: number;
+}
+
+export class UpdateClassSessionDto {
+  @IsOptional() @IsUUID() unitId?: string;
+  @IsOptional() @IsUUID() roomId?: string;
+  @IsOptional() @IsUUID() professionalId?: string;
+  @IsOptional() @IsDateString() startsAt?: string;
+  @IsOptional() @IsDateString() endsAt?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) capacity?: number;
 }
 
 export class CreateBookingDto {

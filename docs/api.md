@@ -26,10 +26,18 @@ The response matches studio login: `{ studio, deviceExpiresAt }` and sets the
 
 ## Operational class flow
 
-- `POST /class-sessions` creates a one-off class time.
+- `POST /recurring-schedules` creates a weekly class time and generates upcoming sessions.
+- `PATCH /recurring-schedules/:id` edits a weekly class time.
+- `POST /recurring-schedules/:id/pause` pauses a weekly class time for a number of weeks.
+- `POST /recurring-schedules/:id/archive` removes a weekly class time from active use.
+- `POST /recurring-schedules/:id/enrollments` adds a saved student to that weekly class time.
 - `POST /bookings` adds a saved student to a class.
 - `POST /attendance/mark` marks presence, absence, or justified absence.
-- `GET /dashboard` and `GET /class-sessions` return class bookings with attendance and student monthly lesson balance.
+- `GET /dashboard`, `GET /class-sessions`, and `GET /class-sessions/:id` return class bookings with attendance and student monthly lesson balance.
+
+`GET /class-sessions`, `GET /class-sessions/:id`, and `GET /recurring-schedules`
+accept either `classes.read_all` or `classes.read_own`. Users without
+`classes.read_all` only receive classes assigned to their authenticated staff member.
 
 Students accept `monthlyLessonLimit` on create/update. `monthlyLessonsUsed` and
 `monthlyLessonsRemaining` are calculated from the current month's attendance.

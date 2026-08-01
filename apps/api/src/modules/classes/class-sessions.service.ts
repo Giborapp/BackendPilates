@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { AuthenticatedUser } from '@/shared/auth/auth.types';
-import { CreateClassSessionDto } from '@/shared/http/common.dto';
+import { CreateClassSessionDto, UpdateClassSessionDto } from '@/shared/http/common.dto';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AttendanceService, withLessonBalance } from '../attendance/attendance.service';
@@ -34,6 +34,26 @@ export class ClassSessionsService {
     return this.attachStudentBalances(sessions, user.studioId);
   }
 
+  async get(user: AuthenticatedUser, id: string) {
+    await this.attendance.markAutomaticNoShows(user.studioId);
+    const where = user.permissions.includes('classes.read_all')
+      ? { id, studioId: user.studioId }
+      : { id, studioId: user.studioId, professionalId: user.staffMemberId };
+    const session = await this.prisma.classSession.findFirstOrThrow({
+      where,
+      include: {
+        professional: { select: { id: true, name: true } },
+        bookings: {
+          where: { status: { not: 'CANCELLED' } },
+          include: { student: true, attendance: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+    const [sessionWithBalances] = await this.attachStudentBalances([session], user.studioId);
+    return sessionWithBalances;
+  }
+
   async create(user: AuthenticatedUser, dto: CreateClassSessionDto) {
     await Promise.all([
       this.prisma.unit.findFirstOrThrow({ where: { id: dto.unitId, studioId: user.studioId } }),
@@ -61,11 +81,33 @@ export class ClassSessionsService {
     return session;
   }
 
-  async update(user: AuthenticatedUser, id: string, body: Prisma.ClassSessionUpdateInput) {
+  async update(user: AuthenticatedUser, id: string, body: UpdateClassSessionDto) {
     const before = await this.prisma.classSession.findFirstOrThrow({
       where: { id, studioId: user.studioId },
     });
-    const after = await this.prisma.classSession.update({ where: { id: before.id }, data: body });
+    await Promise.all([
+      body.unitId
+        ? this.prisma.unit.findFirstOrThrow({ where: { id: body.unitId, studioId: user.studioId } })
+        : Promise.resolve(),
+      body.roomId
+        ? this.prisma.room.findFirstOrThrow({
+            where: { id: body.roomId, studioId: user.studioId, unitId: body.unitId ?? before.unitId },
+          })
+        : Promise.resolve(),
+      body.professionalId
+        ? this.prisma.staffMember.findFirstOrThrow({
+            where: { id: body.professionalId, studioId: user.studioId, active: true, archivedAt: null },
+          })
+        : Promise.resolve(),
+    ]);
+    const after = await this.prisma.classSession.update({
+      where: { id: before.id },
+      data: {
+        ...body,
+        startsAt: body.startsAt ? new Date(body.startsAt) : undefined,
+        endsAt: body.endsAt ? new Date(body.endsAt) : undefined,
+      },
+    });
     await this.audit.record({
       studioId: user.studioId,
       actorStaffId: user.staffMemberId,

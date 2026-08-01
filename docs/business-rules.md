@@ -14,13 +14,22 @@ PINs have four digits, are unique inside a studio, and reject obvious values suc
 
 Bookings can consume class capacity depending on booking type and studio settings. Overbooking requires administrative permission.
 
+## Weekly schedules
+
+Operational agenda setup is based on weekly recurring schedules. A recurring schedule defines weekday, start time, duration, professional, room, and capacity. Creating a recurring schedule generates upcoming class sessions. Pausing a recurring schedule cancels future scheduled sessions during the pause window, so they do not consume student monthly lessons.
+
+Students can be added to a single generated class session or enrolled in a recurring schedule. Recurring enrollments add the student to future generated sessions for that weekly schedule.
+
+Weekly schedule generation uses the studio timezone. Recurring enrollments must respect
+the same capacity rules as manual bookings.
+
 ## Monthly lesson balance
 
-Students can have a monthly lesson limit. The remaining monthly balance is derived from attendance records in the current month. `PRESENT`, `ABSENT`, and `CANCELLED_LATE` consume one lesson. Justified absences and in-time cancellations do not consume a monthly lesson.
+Students can have a monthly lesson limit. The remaining monthly balance is derived from attendance records in the current month. `PRESENT`, `ABSENT`, and `CANCELLED_LATE` consume one lesson only when the class session is not cancelled. Justified absences, in-time cancellations, and cancelled class sessions do not consume a monthly lesson.
 
 ## Automatic no-show
 
-Booked students without attendance marked three hours after the class start are automatically marked as `ABSENT` when operational class data is loaded. The automatic operation creates an audit record.
+Booked students without attendance marked three hours after the class start are automatically marked as `ABSENT`. The backend runs this check periodically and also runs it when operational class data is loaded. The automatic operation creates an audit record.
 
 ## Replacement credits
 

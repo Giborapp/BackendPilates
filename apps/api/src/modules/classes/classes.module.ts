@@ -5,6 +5,7 @@ import { BookingsController } from './bookings.controller';
 import { WaitingListController } from './waiting-list.controller';
 import { ClassSessionsService } from './class-sessions.service';
 import { BookingsService } from './bookings.service';
+import { RecurringSchedulesService } from './recurring-schedules.service';
 import { AttendanceModule } from '../attendance/attendance.module';
 
 @Module({
@@ -15,6 +16,6 @@ import { AttendanceModule } from '../attendance/attendance.module';
     BookingsController,
     WaitingListController,
   ],
-  providers: [ClassSessionsService, BookingsService],
+  providers: [ClassSessionsService, BookingsService, RecurringSchedulesService],
 })
 export class ClassesModule {}

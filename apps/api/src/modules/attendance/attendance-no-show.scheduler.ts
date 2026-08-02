@@ -16,6 +16,9 @@ export class AttendanceNoShowScheduler implements OnApplicationBootstrap, OnAppl
   ) {}
 
   onApplicationBootstrap(): void {
+    if (process.env.NODE_ENV === 'test') {
+      return;
+    }
     this.interval = setInterval(() => {
       void this.run();
     }, AUTO_NO_SHOW_INTERVAL_MS);

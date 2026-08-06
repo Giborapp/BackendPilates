@@ -215,3 +215,7 @@ export class CreateAssessmentDto {
   answers!: unknown;
   @IsOptional() @IsEnum(AssessmentStatus) status?: AssessmentStatus;
 }
+
+export class AssessmentQueryDto {
+  @IsOptional() @IsUUID() studentId?: string;
+}

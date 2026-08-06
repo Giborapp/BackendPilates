@@ -38,3 +38,6 @@ Eligible justified absences can generate a single replacement credit. Credits ex
 ## Assessments
 
 Completed assessments are immutable for normal edits. Corrections must preserve history.
+Admins and professionals can create reusable assessment/anamnesis templates.
+Student reassessments compare saved answers from previous assessments; changed
+and unchanged answers must remain visible to the user.

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AssessmentStatus, Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '@/shared/auth/jwt-auth.guard';
@@ -6,7 +6,7 @@ import { PermissionsGuard } from '@/shared/auth/permissions.guard';
 import { RequirePermissions } from '@/shared/auth/permissions';
 import { CurrentUser } from '@/shared/auth/current-user.decorator';
 import type { AuthenticatedUser } from '@/shared/auth/auth.types';
-import { CreateAssessmentDto, IdParamDto } from '@/shared/http/common.dto';
+import { AssessmentQueryDto, CreateAssessmentDto, IdParamDto } from '@/shared/http/common.dto';
 import { parseTemplateFields, validateAnswers } from '@/shared/domain/assessment-validator';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -20,8 +20,12 @@ export class AssessmentsController {
 
   @Get()
   @RequirePermissions('assessments.read')
-  list(@CurrentUser() user: AuthenticatedUser) {
-    return this.prisma.assessment.findMany({ where: { studioId: user.studioId }, include: { student: true, template: true } });
+  list(@CurrentUser() user: AuthenticatedUser, @Query() query: AssessmentQueryDto) {
+    return this.prisma.assessment.findMany({
+      where: { studioId: user.studioId, studentId: query.studentId },
+      include: { student: true, template: true },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   @Post()

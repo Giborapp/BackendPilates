@@ -45,3 +45,14 @@ The studio must have at least one active unit and room.
 
 Students accept `monthlyLessonLimit` on create/update. `monthlyLessonsUsed` and
 `monthlyLessonsRemaining` are calculated from the current month's attendance.
+
+## Assessments and anamnesis
+
+- `POST /assessment-templates` creates a reusable assessment/anamnesis form.
+- `GET /assessment-templates` lists active forms.
+- `GET /assessment-templates/:id` returns one form.
+- `GET /assessments?studentId=:id` lists assessments for a student.
+- `POST /assessments` records an assessment for a student.
+
+Admins and professionals can create assessment templates. Assessment answers are
+validated against the selected template fields.

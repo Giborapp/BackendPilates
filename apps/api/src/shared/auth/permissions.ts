@@ -55,6 +55,7 @@ export function defaultPermissionsForRole(role: string): Permission[] {
       'assessments.read',
       'assessments.create',
       'assessments.update_draft',
+      'assessment_templates.manage',
       'trial_students.manage',
     ];
   }

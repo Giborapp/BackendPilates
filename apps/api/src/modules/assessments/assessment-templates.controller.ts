@@ -22,6 +22,14 @@ export class AssessmentTemplatesController {
     return this.prisma.assessmentTemplate.findMany({ where: { studioId: user.studioId, archivedAt: null } });
   }
 
+  @Get(':id')
+  @RequirePermissions('assessments.read')
+  get(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
+    return this.prisma.assessmentTemplate.findFirstOrThrow({
+      where: { id: params.id, studioId: user.studioId, archivedAt: null },
+    });
+  }
+
   @Post()
   @RequirePermissions('assessment_templates.manage')
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateTemplateDto) {

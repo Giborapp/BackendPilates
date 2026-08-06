@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { BookingType, Prisma, Weekday } from '@prisma/client';
 import type { AuthenticatedUser } from '@/shared/auth/auth.types';
 import { CreateScheduleDto, UpdateScheduleDto } from '@/shared/http/common.dto';
@@ -31,10 +31,17 @@ export class RecurringSchedulesService {
   }
 
   async create(user: AuthenticatedUser, dto: CreateScheduleDto) {
-    await this.assertScheduleRelations(user.studioId, dto.unitId, dto.roomId, dto.professionalId);
+    const relations = await this.resolveScheduleRelations(
+      user.studioId,
+      dto.unitId,
+      dto.roomId,
+      dto.professionalId,
+    );
     const schedule = await this.prisma.recurringClassSchedule.create({
       data: {
         ...dto,
+        unitId: relations.unitId,
+        roomId: relations.roomId,
         studioId: user.studioId,
         startsOn: new Date(dto.startsOn),
         endsOn: dto.endsOn ? new Date(dto.endsOn) : undefined,
@@ -269,6 +276,38 @@ export class RecurringSchedulesService {
         where: { id: professionalId, studioId, active: true, archivedAt: null },
       }),
     ]);
+  }
+
+  private async resolveScheduleRelations(
+    studioId: string,
+    unitId: string | undefined,
+    roomId: string | undefined,
+    professionalId: string,
+  ): Promise<{ unitId: string; roomId: string }> {
+    const unit = unitId
+      ? await this.prisma.unit.findFirstOrThrow({ where: { id: unitId, studioId } })
+      : await this.prisma.unit.findFirst({
+          where: { studioId, active: true },
+          orderBy: { createdAt: 'asc' },
+        });
+    if (!unit) {
+      throw new BadRequestException('Crie uma unidade antes de criar horarios.');
+    }
+
+    const room = roomId
+      ? await this.prisma.room.findFirstOrThrow({ where: { id: roomId, studioId, unitId: unit.id } })
+      : await this.prisma.room.findFirst({
+          where: { studioId, unitId: unit.id, active: true },
+          orderBy: { createdAt: 'asc' },
+        });
+    if (!room) {
+      throw new BadRequestException('Crie uma sala antes de criar horarios.');
+    }
+
+    await this.prisma.staffMember.findFirstOrThrow({
+      where: { id: professionalId, studioId, active: true, archivedAt: null },
+    });
+    return { unitId: unit.id, roomId: room.id };
   }
 }
 

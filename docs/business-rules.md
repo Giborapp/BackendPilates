@@ -16,7 +16,7 @@ Bookings can consume class capacity depending on booking type and studio setting
 
 ## Weekly schedules
 
-Operational agenda setup is based on weekly recurring schedules. A recurring schedule defines weekday, start time, duration, professional, room, and capacity. Creating a recurring schedule generates upcoming class sessions. Pausing a recurring schedule cancels future scheduled sessions during the pause window, so they do not consume student monthly lessons.
+Operational agenda setup is based on weekly recurring schedules. A recurring schedule defines weekday, start time, duration, professional, room, and capacity. For simple class creation, room and unit can be omitted by the client; the API selects the first active studio unit and room. Creating a recurring schedule generates upcoming class sessions. Pausing a recurring schedule cancels future scheduled sessions during the pause window, so they do not consume student monthly lessons.
 
 Students can be added to a single generated class session or enrolled in a recurring schedule. Recurring enrollments add the student to future generated sessions for that weekly schedule.
 

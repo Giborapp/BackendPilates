@@ -121,8 +121,8 @@ export class PaymentQueryDto {
 }
 
 export class CreateScheduleDto {
-  @IsUUID() unitId!: string;
-  @IsUUID() roomId!: string;
+  @IsOptional() @IsUUID() unitId?: string;
+  @IsOptional() @IsUUID() roomId?: string;
   @IsUUID() professionalId!: string;
   @IsEnum(Weekday) weekday!: Weekday;
   @IsString() startTime!: string;

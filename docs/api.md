@@ -39,5 +39,9 @@ The response matches studio login: `{ studio, deviceExpiresAt }` and sets the
 accept either `classes.read_all` or `classes.read_own`. Users without
 `classes.read_all` only receive classes assigned to their authenticated staff member.
 
+When creating a recurring schedule, `unitId` and `roomId` are optional. If they
+are omitted, the API uses the studio's first active unit and first active room.
+The studio must have at least one active unit and room.
+
 Students accept `monthlyLessonLimit` on create/update. `monthlyLessonsUsed` and
 `monthlyLessonsRemaining` are calculated from the current month's attendance.

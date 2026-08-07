@@ -6,6 +6,10 @@ import { PrismaService } from '@/shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { BookingsService } from './bookings.service';
 
+const DEFAULT_SCHEDULE_UNIT_NAME = 'Unidade principal';
+const DEFAULT_SCHEDULE_ROOM_NAME = 'Sala principal';
+const DEFAULT_SCHEDULE_ROOM_CAPACITY = 6;
+
 @Injectable()
 export class RecurringSchedulesService {
   constructor(
@@ -284,30 +288,61 @@ export class RecurringSchedulesService {
     roomId: string | undefined,
     professionalId: string,
   ): Promise<{ unitId: string; roomId: string }> {
-    const unit = unitId
-      ? await this.prisma.unit.findFirstOrThrow({ where: { id: unitId, studioId } })
-      : await this.prisma.unit.findFirst({
-          where: { studioId, active: true },
-          orderBy: { createdAt: 'asc' },
-        });
-    if (!unit) {
-      throw new BadRequestException('Crie uma unidade antes de criar horarios.');
-    }
-
-    const room = roomId
-      ? await this.prisma.room.findFirstOrThrow({ where: { id: roomId, studioId, unitId: unit.id } })
-      : await this.prisma.room.findFirst({
-          where: { studioId, unitId: unit.id, active: true },
-          orderBy: { createdAt: 'asc' },
-        });
-    if (!room) {
-      throw new BadRequestException('Crie uma sala antes de criar horarios.');
-    }
-
     await this.prisma.staffMember.findFirstOrThrow({
       where: { id: professionalId, studioId, active: true, archivedAt: null },
     });
+
+    if (roomId) {
+      const room = await this.prisma.room.findFirstOrThrow({
+        where: { id: roomId, studioId, active: true },
+        select: { id: true, unitId: true },
+      });
+      if (unitId && unitId !== room.unitId) {
+        throw new BadRequestException('Sala nao pertence a unidade informada.');
+      }
+      return { unitId: room.unitId, roomId: room.id };
+    }
+
+    const unit = unitId
+      ? await this.prisma.unit.findFirstOrThrow({
+          where: { id: unitId, studioId, active: true },
+        })
+      : await this.findOrCreateDefaultUnit(studioId);
+
+    const room =
+      (await this.prisma.room.findFirst({
+        where: { studioId, unitId: unit.id, active: true },
+        orderBy: { createdAt: 'asc' },
+      })) ?? (await this.createDefaultRoom(studioId, unit.id));
+
     return { unitId: unit.id, roomId: room.id };
+  }
+
+  private async findOrCreateDefaultUnit(studioId: string): Promise<{ id: string }> {
+    const existing = await this.prisma.unit.findFirst({
+      where: { studioId, active: true },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    if (existing) {
+      return existing;
+    }
+    return this.prisma.unit.create({
+      data: { studioId, name: DEFAULT_SCHEDULE_UNIT_NAME },
+      select: { id: true },
+    });
+  }
+
+  private async createDefaultRoom(studioId: string, unitId: string): Promise<{ id: string }> {
+    return this.prisma.room.create({
+      data: {
+        studioId,
+        unitId,
+        name: DEFAULT_SCHEDULE_ROOM_NAME,
+        defaultCapacity: DEFAULT_SCHEDULE_ROOM_CAPACITY,
+      },
+      select: { id: true },
+    });
   }
 }
 

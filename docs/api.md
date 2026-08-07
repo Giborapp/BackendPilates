@@ -41,7 +41,8 @@ accept either `classes.read_all` or `classes.read_own`. Users without
 
 When creating a recurring schedule, `unitId` and `roomId` are optional. If they
 are omitted, the API uses the studio's first active unit and first active room.
-The studio must have at least one active unit and room.
+If the studio has no active unit or room yet, the API creates a default internal
+unit and room so the user can create a simple weekly class time immediately.
 
 Students accept `monthlyLessonLimit` on create/update. `monthlyLessonsUsed` and
 `monthlyLessonsRemaining` are calculated from the current month's attendance.

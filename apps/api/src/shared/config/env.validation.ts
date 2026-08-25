@@ -14,12 +14,26 @@ const envSchema = z.object({
   COOKIE_DOMAIN: z.string().optional().default(''),
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
   LOCAL_STORAGE_PATH: z.string().default('./storage'),
+  FILE_UPLOAD_MAX_BYTES: z.coerce.number().int().positive().default(10_000_000),
   BOOTSTRAP_SETUP_TOKEN: z.string().min(32).optional(),
   S3_ENDPOINT: z.string().optional().default(''),
   S3_REGION: z.string().optional().default(''),
   S3_BUCKET: z.string().optional().default(''),
   S3_ACCESS_KEY_ID: z.string().optional().default(''),
   S3_SECRET_ACCESS_KEY: z.string().optional().default(''),
+}).superRefine((env, context) => {
+  if (env.STORAGE_DRIVER !== 's3') {
+    return;
+  }
+  for (const key of ['S3_ENDPOINT', 'S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const) {
+    if (!env[key]) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [key],
+        message: `${key} is required when STORAGE_DRIVER=s3`,
+      });
+    }
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;

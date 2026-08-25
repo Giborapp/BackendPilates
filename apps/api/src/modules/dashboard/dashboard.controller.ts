@@ -7,6 +7,7 @@ import { RequirePermissions } from '@/shared/auth/permissions';
 import { CurrentUser } from '@/shared/auth/current-user.decorator';
 import type { AuthenticatedUser } from '@/shared/auth/auth.types';
 import { PrismaService } from '@/shared/prisma/prisma.service';
+import { startOfLocalDay } from '@/shared/domain/local-time';
 import { AttendanceService, withLessonBalance } from '../attendance/attendance.service';
 
 @ApiTags('dashboard')
@@ -24,9 +25,11 @@ export class DashboardController {
   async get(@CurrentUser() user: AuthenticatedUser) {
     await this.attendance.markAutomaticNoShows(user.studioId);
     const now = new Date();
-    const startOfDay = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    const studio = await this.prisma.studio.findUniqueOrThrow({
+      where: { id: user.studioId },
+      select: { timezone: true },
+    });
+    const startOfDay = startOfLocalDay(now, studio.timezone);
     const endOfDay = new Date(startOfDay.getTime() + 86_400_000);
     const classWhere = user.permissions.includes('classes.read_all')
       ? { studioId: user.studioId, startsAt: { gte: startOfDay, lt: endOfDay } }

@@ -3,6 +3,7 @@ import {
   attendanceConsumesLesson,
   automaticNoShowThreshold,
 } from '../src/modules/attendance/attendance.service';
+import { startOfLocalDay, startOfLocalMonth } from '../src/shared/domain/local-time';
 
 describe('attendance rules', () => {
   it.each([AttendanceStatus.PRESENT, AttendanceStatus.ABSENT, AttendanceStatus.CANCELLED_LATE])(
@@ -24,5 +25,23 @@ describe('attendance rules', () => {
     expect(automaticNoShowThreshold(new Date('2026-08-01T15:00:00.000Z')).toISOString()).toBe(
       '2026-08-01T12:00:00.000Z',
     );
+  });
+
+  it('starts operational days in the studio timezone', () => {
+    expect(
+      startOfLocalDay(
+        new Date('2026-08-17T02:30:00.000Z'),
+        'America/Sao_Paulo',
+      ).toISOString(),
+    ).toBe('2026-08-16T03:00:00.000Z');
+  });
+
+  it('starts monthly lesson usage in the studio timezone', () => {
+    expect(
+      startOfLocalMonth(
+        new Date('2026-08-01T02:30:00.000Z'),
+        'America/Sao_Paulo',
+      ).toISOString(),
+    ).toBe('2026-07-01T03:00:00.000Z');
   });
 });

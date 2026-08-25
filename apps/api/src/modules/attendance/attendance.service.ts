@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AttendanceStatus, ClassSessionStatus } from '@prisma/client';
 import { PrismaService } from '@/shared/prisma/prisma.service';
+import { addLocalMonths, startOfLocalMonth } from '@/shared/domain/local-time';
 import { AuditService } from '../audit/audit.service';
 
 const CONSUMING_ATTENDANCE_STATUSES: AttendanceStatus[] = [
@@ -130,8 +131,12 @@ export class AttendanceService {
     if (studentIds.length === 0) {
       return new Map<string, number>();
     }
-    const start = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), 1));
-    const end = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() + 1, 1));
+    const studio = await this.prisma.studio.findUniqueOrThrow({
+      where: { id: studioId },
+      select: { timezone: true },
+    });
+    const start = startOfLocalMonth(reference, studio.timezone);
+    const end = addLocalMonths(start, 1, studio.timezone);
     const grouped = await this.prisma.attendance.groupBy({
       by: ['classBookingId'],
       where: {

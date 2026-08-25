@@ -1,11 +1,14 @@
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsNumberString,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -24,6 +27,7 @@ import {
   TrialStatus,
   Weekday,
 } from '@prisma/client';
+import { PERMISSIONS } from '@/shared/auth/permissions';
 
 export class IdParamDto {
   @IsUUID()
@@ -51,14 +55,14 @@ export class CreateStaffDto {
   @IsString() name!: string;
   @IsEnum(Role) role!: Role;
   @IsString() @Length(4, 4) pin!: string;
-  @IsOptional() permissions?: string[];
+  @IsOptional() @IsArray() @IsIn(PERMISSIONS, { each: true }) permissions?: string[];
   @IsOptional() @IsBoolean() active?: boolean;
 }
 
 export class UpdateStaffDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsEnum(Role) role?: Role;
-  @IsOptional() permissions?: string[];
+  @IsOptional() @IsArray() @IsIn(PERMISSIONS, { each: true }) permissions?: string[];
   @IsOptional() @IsBoolean() active?: boolean;
 }
 
@@ -206,12 +210,14 @@ export class UpdateTrialStatusDto {
 export class CreateTemplateDto {
   @IsString() name!: string;
   @IsOptional() @IsString() description?: string;
+  @IsArray()
   fields!: unknown;
 }
 
 export class CreateAssessmentDto {
   @IsUUID() studentId!: string;
   @IsUUID() templateId!: string;
+  @IsObject()
   answers!: unknown;
   @IsOptional() @IsEnum(AssessmentStatus) status?: AssessmentStatus;
 }

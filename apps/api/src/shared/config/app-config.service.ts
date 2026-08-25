@@ -63,7 +63,31 @@ export class AppConfigService {
     return this.config.get('LOCAL_STORAGE_PATH', { infer: true });
   }
 
+  get fileUploadMaxBytes(): number {
+    return this.config.get('FILE_UPLOAD_MAX_BYTES', { infer: true });
+  }
+
   get bootstrapSetupToken(): string | undefined {
     return this.config.get('BOOTSTRAP_SETUP_TOKEN', { infer: true });
+  }
+
+  get s3Endpoint(): string {
+    return this.config.get('S3_ENDPOINT', { infer: true });
+  }
+
+  get s3Region(): string {
+    return this.config.get('S3_REGION', { infer: true });
+  }
+
+  get s3Bucket(): string {
+    return this.config.get('S3_BUCKET', { infer: true });
+  }
+
+  get s3AccessKeyId(): string {
+    return this.config.get('S3_ACCESS_KEY_ID', { infer: true });
+  }
+
+  get s3SecretAccessKey(): string {
+    return this.config.get('S3_SECRET_ACCESS_KEY', { infer: true });
   }
 }

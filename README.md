@@ -37,6 +37,10 @@ pnpm prisma:migrate
 pnpm prisma:seed
 ```
 
+Private file storage is documented in `docs/storage.md`. Development can use
+`STORAGE_DRIVER=local`; production should use `STORAGE_DRIVER=s3` with a private
+S3-compatible bucket such as Cloudflare R2.
+
 ## Demo credentials
 
 The development seed creates:

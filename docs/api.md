@@ -57,3 +57,17 @@ Students accept `monthlyLessonLimit` on create/update. `monthlyLessonsUsed` and
 
 Admins and professionals can create assessment templates. Assessment answers are
 validated against the selected template fields.
+
+## Private files
+
+- `POST /files/uploads` creates a pending file record and returns a short-lived
+  PUT URL.
+- `POST /files/:id/confirm` verifies the object exists in storage and marks the
+  file available.
+- `GET /files/:id/download` returns a short-lived GET URL.
+- `DELETE /files/:id` deletes the object and marks the file deleted.
+- `POST /files/uploads/cleanup` removes stale pending uploads.
+
+The API accepts only PDF, JPEG, PNG, and WebP. The owner must belong to the
+authenticated studio. Student-owned files use student permissions; assessment
+files use assessment permissions; staff files require staff management.

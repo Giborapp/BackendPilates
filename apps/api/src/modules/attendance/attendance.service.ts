@@ -37,7 +37,7 @@ export class AttendanceService {
     const result = await this.prisma.$transaction(async (tx) => {
       const booking = await tx.classBooking.findFirstOrThrow({
         where: { id: input.classBookingId, studioId: input.studioId },
-        include: { classSession: true },
+        include: { classSession: true, replacementCredit: true },
       });
       const attendance = await tx.attendance.upsert({
         where: { classBookingId: booking.id },
@@ -76,6 +76,16 @@ export class AttendanceService {
           },
           update: { notes: input.justification },
         });
+      }
+      if (booking.replacementCreditId) {
+        const settings = await tx.studioSettings.findUniqueOrThrow({ where: { studioId: input.studioId } });
+        if (input.status === AttendanceStatus.PRESENT || input.status === AttendanceStatus.CANCELLED_LATE) {
+          await tx.replacementCredit.updateMany({ where: { id: booking.replacementCreditId, status: 'RESERVED' }, data: { status: 'USED', usedAt: new Date() } });
+        } else if (input.status === AttendanceStatus.ABSENT && !settings.replacementNoShowConsumesCredit) {
+          await tx.replacementCredit.updateMany({ where: { id: booking.replacementCreditId, status: 'RESERVED', expiresAt: { gt: new Date() } }, data: { status: 'AVAILABLE', usedBookingId: null } });
+        } else if (input.status === AttendanceStatus.ABSENT) {
+          await tx.replacementCredit.updateMany({ where: { id: booking.replacementCreditId, status: 'RESERVED' }, data: { status: 'USED', usedAt: new Date() } });
+        }
       }
       return attendance;
     });

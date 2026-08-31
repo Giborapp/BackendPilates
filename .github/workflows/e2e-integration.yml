@@ -1,0 +1,114 @@
+name: E2E integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_ref:
+        description: Backend branch or tag
+        required: false
+        default: main
+      frontend_ref:
+        description: Frontend branch or tag
+        required: false
+        default: main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pilates_e2e
+          POSTGRES_PASSWORD: pilates_e2e
+          POSTGRES_DB: pilates_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pilates_e2e -d pilates_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      NODE_ENV: test
+      E2E_INTEGRATION: "true"
+      DATABASE_URL: postgresql://pilates_e2e:pilates_e2e@127.0.0.1:5432/pilates_e2e?schema=public
+      PORT: "3001"
+      E2E_API_URL: http://127.0.0.1:3001
+      E2E_WEB_URL: http://127.0.0.1:2345
+      CORS_ORIGINS: http://127.0.0.1:2345
+      PUBLIC_WEB_URL: http://127.0.0.1:2345
+      ACCESS_TOKEN_SECRET: e2e-access-secret-32-characters-minimum
+      REFRESH_TOKEN_SECRET: e2e-refresh-secret-32-characters-minimum
+      DEVICE_TOKEN_SECRET: e2e-device-secret-32-characters-minimum
+      STORAGE_DRIVER: local
+      LOCAL_STORAGE_PATH: ${{ runner.temp }}/pilates-e2e-storage
+      FILE_UPLOAD_MAX_BYTES: "10000000"
+      FRONTEND_DIR: ${{ github.workspace }}/PilatesFront
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.backend_ref || github.event.pull_request.head.ref || github.ref_name }}
+
+      - name: Checkout frontend
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/PilatesFront
+          path: PilatesFront
+          ref: ${{ inputs.frontend_ref || github.event.pull_request.head.ref || github.ref_name }}
+          token: ${{ secrets.PILATES_FRONT_READ_TOKEN || github.token }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install backend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install frontend
+        working-directory: PilatesFront
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        working-directory: PilatesFront
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build API
+        run: pnpm build
+
+      - name: Build frontend for integration
+        working-directory: PilatesFront
+        run: pnpm build
+
+      - name: Run integrated E2E
+        run: pnpm test:e2e:integration
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: PilatesFront/apps/web/playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload JUnit report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-junit
+          path: "**/test-results/**/*.xml"
+          if-no-files-found: ignore

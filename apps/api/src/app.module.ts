@@ -28,6 +28,8 @@ import { AssessmentsModule } from './modules/assessments/assessments.module';
 import { FilesModule } from './modules/files/files.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { SetupModule } from './modules/setup/setup.module';
+import { PublicIntakesModule } from './modules/public-intakes/public-intakes.module';
+import { ReplacementLinksModule } from './modules/replacement-links/replacement-links.module';
 
 @Module({
   imports: [
@@ -38,6 +40,7 @@ import { SetupModule } from './modules/setup/setup.module';
           paths: [
             'req.headers.authorization',
             'req.headers.cookie',
+            'req.url',
             'req.body.password',
             'req.body.pin',
             'req.body.refreshToken',
@@ -69,6 +72,8 @@ import { SetupModule } from './modules/setup/setup.module';
     FilesModule,
     DashboardModule,
     SetupModule,
+    PublicIntakesModule,
+    ReplacementLinksModule,
   ],
   providers: [
     AppConfigService,

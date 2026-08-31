@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { AssessmentStatus, Prisma } from '@prisma/client';
+import { AssessmentAudience, AssessmentStatus, AssessmentTemplateStatus, Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '@/shared/auth/jwt-auth.guard';
 import { PermissionsGuard } from '@/shared/auth/permissions.guard';
 import { RequirePermissions } from '@/shared/auth/permissions';
@@ -22,7 +22,7 @@ export class AssessmentsController {
   @RequirePermissions('assessments.read')
   list(@CurrentUser() user: AuthenticatedUser, @Query() query: AssessmentQueryDto) {
     return this.prisma.assessment.findMany({
-      where: { studioId: user.studioId, studentId: query.studentId },
+      where: { studioId: user.studioId, studentId: query.studentId, ...(user.permissions.includes('assessments.clinical_read') ? {} : { template: { audience: AssessmentAudience.STUDENT } }) },
       include: { student: true, template: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -32,7 +32,10 @@ export class AssessmentsController {
   @RequirePermissions('assessments.create')
   async create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateAssessmentDto) {
     await this.prisma.student.findFirstOrThrow({ where: { id: dto.studentId, studioId: user.studioId } });
-    const template = await this.prisma.assessmentTemplate.findFirstOrThrow({ where: { id: dto.templateId, studioId: user.studioId, active: true } });
+    const template = await this.prisma.assessmentTemplate.findFirstOrThrow({ where: { id: dto.templateId, studioId: user.studioId, active: true, status: AssessmentTemplateStatus.PUBLISHED } });
+    if (template.audience === AssessmentAudience.PROFESSIONAL && !user.permissions.includes('assessments.clinical_manage')) {
+      throw new BadRequestException('Professional assessment permission required');
+    }
     const fields = parseTemplateFields(template.fields);
     validateAnswers(fields, dto.answers);
     const assessment = await this.prisma.assessment.create({ data: { studioId: user.studioId, studentId: dto.studentId, templateId: template.id, templateVersion: template.version, answers: dto.answers as Prisma.InputJsonValue, status: dto.status ?? AssessmentStatus.DRAFT, performedByStaffId: user.staffMemberId, completedAt: dto.status === AssessmentStatus.COMPLETED ? new Date() : undefined } });
@@ -48,11 +51,12 @@ export class AssessmentsController {
       throw new BadRequestException('Completed assessments cannot be edited silently');
     }
     const template = await this.prisma.assessmentTemplate.findFirstOrThrow({ where: { id: assessment.templateId, studioId: user.studioId } });
+    if (template.audience === AssessmentAudience.PROFESSIONAL && !user.permissions.includes('assessments.clinical_manage')) throw new BadRequestException('Professional assessment permission required');
     if (dto.answers) {
       validateAnswers(parseTemplateFields(template.fields), dto.answers);
     }
     const updated = await this.prisma.assessment.update({ where: { id: assessment.id }, data: { answers: dto.answers as Prisma.InputJsonValue | undefined, status: dto.status, completedAt: dto.status === AssessmentStatus.COMPLETED ? new Date() : undefined } });
-    await this.audit.record({ studioId: user.studioId, actorStaffId: user.staffMemberId, action: 'assessments.update', entityType: 'Assessment', entityId: updated.id, before: assessment, after: updated });
+    await this.audit.record({ studioId: user.studioId, actorStaffId: user.staffMemberId, action: 'assessments.update', entityType: 'Assessment', entityId: updated.id, metadata: { status: updated.status, templateVersion: updated.templateVersion } });
     return updated;
   }
 }

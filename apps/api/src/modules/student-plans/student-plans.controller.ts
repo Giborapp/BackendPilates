@@ -30,7 +30,7 @@ export class StudentPlansController {
       this.prisma.plan.findFirstOrThrow({ where: { id: dto.planId, studioId: user.studioId } }),
     ]);
     const studentPlan = await this.prisma.studentPlan.create({
-      data: { ...dto, studioId: user.studioId, startDate: new Date(dto.startDate), endDate: dto.endDate ? new Date(dto.endDate) : undefined },
+      data: { ...dto, studioId: user.studioId, sessionsPerWeek: (await this.prisma.plan.findFirstOrThrow({ where: { id: dto.planId, studioId: user.studioId } })).sessionsPerWeek, startDate: new Date(dto.startDate), endDate: dto.endDate ? new Date(dto.endDate) : undefined },
     });
     await this.audit.record({ studioId: user.studioId, actorStaffId: user.staffMemberId, action: 'student_plans.create', entityType: 'StudentPlan', entityId: studentPlan.id, after: studentPlan });
     return studentPlan;

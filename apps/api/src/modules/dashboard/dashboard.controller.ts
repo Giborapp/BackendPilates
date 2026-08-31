@@ -31,6 +31,8 @@ export class DashboardController {
     });
     const startOfDay = startOfLocalDay(now, studio.timezone);
     const endOfDay = new Date(startOfDay.getTime() + 86_400_000);
+    const nextSevenDays = new Date(startOfDay.getTime() + 7 * 86_400_000);
+    const nextThirtyDays = new Date(startOfDay.getTime() + 30 * 86_400_000);
     const classWhere = user.permissions.includes('classes.read_all')
       ? { studioId: user.studioId, startsAt: { gte: startOfDay, lt: endOfDay } }
       : {
@@ -38,7 +40,10 @@ export class DashboardController {
           professionalId: user.staffMemberId,
           startsAt: { gte: startOfDay, lt: endOfDay },
         };
-    const [classes, overduePayments, duePayments, trials, credits] = await Promise.all([
+    const classScope = user.permissions.includes('classes.read_all')
+      ? { studioId: user.studioId }
+      : { studioId: user.studioId, professionalId: user.staffMemberId };
+    const [classes, overduePayments, duePayments, trials, credits, availableCredits, pendingIntakes, pendingAssessments, upcomingClasses] = await Promise.all([
       this.prisma.classSession.findMany({
         where: classWhere,
         include: { bookings: { include: { student: true, attendance: true } } },
@@ -75,10 +80,26 @@ export class DashboardController {
         where: {
           studioId: user.studioId,
           status: 'AVAILABLE',
-          expiresAt: { lt: new Date(now.getTime() + 7 * 86_400_000) },
+          expiresAt: { lt: nextThirtyDays },
         },
         include: { student: true },
         take: 20,
+      }),
+      this.prisma.replacementCredit.count({
+        where: { studioId: user.studioId, status: 'AVAILABLE', expiresAt: { gte: now } },
+      }),
+      this.prisma.publicIntakeRequest.findMany({
+        where: { studioId: user.studioId, status: 'PENDING' },
+        select: { id: true, createdAt: true, invite: { select: { type: true } } },
+        orderBy: { createdAt: 'asc' },
+        take: 20,
+      }),
+      user.permissions.includes('assessments.clinical_read')
+        ? this.prisma.assessment.count({ where: { studioId: user.studioId, status: 'DRAFT' } })
+        : Promise.resolve(0),
+      this.prisma.classSession.findMany({
+        where: { ...classScope, startsAt: { gte: startOfDay, lt: nextSevenDays }, status: 'SCHEDULED' },
+        select: { id: true, capacity: true, bookings: { where: { status: 'BOOKED' }, select: { id: true } } },
       }),
     ]);
     const studentIds = [
@@ -102,6 +123,19 @@ export class DashboardController {
       duePayments,
       trialProcesses: trials,
       expiringCredits: credits,
+      pendingIntakes,
+      dashboardCounts: {
+        classesToday: classes.length,
+        pendingAttendances: classes.reduce((total, session) => total + session.bookings.filter((booking) => !booking.attendance).length, 0),
+        overduePayments: overduePayments.length,
+        duePayments: duePayments.length,
+        pendingIntakes: pendingIntakes.length,
+        pendingAssessments,
+        availableCredits,
+        expiringCredits30: credits.filter((credit) => credit.expiresAt <= nextThirtyDays).length,
+        expiringCredits7: credits.filter((credit) => credit.expiresAt <= nextSevenDays).length,
+        nearCapacity: upcomingClasses.filter((session) => session.bookings.length >= Math.max(0, session.capacity - 1)).length,
+      },
     };
   }
 }

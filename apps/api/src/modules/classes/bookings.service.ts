@@ -85,7 +85,7 @@ export class BookingsService {
         if (dto.replacementCreditId) {
           await tx.replacementCredit.update({
             where: { id: dto.replacementCreditId },
-            data: { status: 'USED', usedAt: new Date(), usedBookingId: created.id },
+            data: { status: 'RESERVED', usedBookingId: created.id },
           });
         }
         return created;
@@ -104,9 +104,13 @@ export class BookingsService {
   }
 
   async cancel(user: AuthenticatedUser, id: string) {
-    const booking = await this.prisma.classBooking.update({
-      where: { id, studioId: user.studioId },
-      data: { status: BookingStatus.CANCELLED },
+    const booking = await this.prisma.$transaction(async (tx) => {
+      const current = await tx.classBooking.findFirstOrThrow({ where: { id, studioId: user.studioId } });
+      const updated = await tx.classBooking.update({ where: { id: current.id }, data: { status: BookingStatus.CANCELLED } });
+      if (current.replacementCreditId) {
+        await tx.replacementCredit.updateMany({ where: { id: current.replacementCreditId, studioId: user.studioId, status: 'RESERVED', expiresAt: { gt: new Date() } }, data: { status: 'AVAILABLE', usedBookingId: null } });
+      }
+      return updated;
     });
     await this.audit.record({
       studioId: user.studioId,

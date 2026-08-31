@@ -35,15 +35,23 @@ export class RecurringSchedulesService {
   }
 
   async create(user: AuthenticatedUser, dto: CreateScheduleDto) {
+    const { studentIds = [], confirmFrequencyOverride = false, ...scheduleInput } = dto;
+    const uniqueStudentIds = [...new Set(studentIds)];
+    if (uniqueStudentIds.length > dto.capacity) throw new BadRequestException('Selected students exceed schedule capacity');
+    if (uniqueStudentIds.length > 0) {
+      const students = await this.prisma.student.findMany({ where: { id: { in: uniqueStudentIds }, studioId: user.studioId, archivedAt: null }, select: { id: true } });
+      if (students.length !== uniqueStudentIds.length) throw new BadRequestException('One or more students are invalid');
+      await this.assertNoScheduleConflicts(user, scheduleInput, uniqueStudentIds, confirmFrequencyOverride);
+    }
     const relations = await this.resolveScheduleRelations(
       user.studioId,
-      dto.unitId,
-      dto.roomId,
-      dto.professionalId,
+      scheduleInput.unitId,
+      scheduleInput.roomId,
+      scheduleInput.professionalId,
     );
     const schedule = await this.prisma.recurringClassSchedule.create({
       data: {
-        ...dto,
+        ...scheduleInput,
         unitId: relations.unitId,
         roomId: relations.roomId,
         studioId: user.studioId,
@@ -60,6 +68,7 @@ export class RecurringSchedulesService {
       after: schedule,
     });
     await this.generate(user, schedule.id, new Date(), new Date(Date.now() + 12 * 7 * 86_400_000));
+    for (const studentId of uniqueStudentIds) await this.enroll(user, schedule.id, studentId);
     return schedule;
   }
 
@@ -152,6 +161,7 @@ export class RecurringSchedulesService {
     await this.prisma.student.findFirstOrThrow({
       where: { id: studentId, studioId: user.studioId, archivedAt: null },
     });
+    await this.assertStudentFrequency(user, scheduleId, studentId, false);
     const enrollment = await this.prisma.recurringEnrollment.upsert({
       where: {
         studioId_recurringScheduleId_studentId: {
@@ -173,6 +183,23 @@ export class RecurringSchedulesService {
       after: enrollment,
     });
     return enrollment;
+  }
+
+  private async assertNoScheduleConflicts(user: AuthenticatedUser, input: Pick<CreateScheduleDto, 'professionalId' | 'weekday' | 'startTime' | 'durationMinutes' | 'roomId'>, studentIds: string[], confirmFrequencyOverride: boolean) {
+    const schedules = await this.prisma.recurringClassSchedule.findMany({ where: { studioId: user.studioId, weekday: input.weekday, archivedAt: null }, include: { enrollments: { where: { active: true }, select: { studentId: true } } } });
+    const conflicts = schedules.filter((schedule) => timeIntervalsOverlap(input.startTime, input.durationMinutes, schedule.startTime, schedule.durationMinutes));
+    if (conflicts.some((schedule) => schedule.professionalId === input.professionalId)) throw new BadRequestException('Professional has an overlapping schedule');
+    if (input.roomId && conflicts.some((schedule) => schedule.roomId === input.roomId)) throw new BadRequestException('Room has an overlapping schedule');
+    const conflictingStudents = new Set(conflicts.flatMap((schedule) => schedule.enrollments.map((enrollment) => enrollment.studentId)).filter((id) => studentIds.includes(id)));
+    if (conflictingStudents.size > 0) throw new BadRequestException('One or more students have an overlapping schedule');
+    for (const studentId of studentIds) await this.assertStudentFrequency(user, undefined, studentId, confirmFrequencyOverride);
+  }
+
+  private async assertStudentFrequency(user: AuthenticatedUser, scheduleId: string | undefined, studentId: string, confirmed: boolean) {
+    const plan = await this.prisma.studentPlan.findFirst({ where: { studioId: user.studioId, studentId, status: 'ACTIVE' }, orderBy: { startDate: 'desc' } });
+    if (!plan) return;
+    const count = await this.prisma.recurringEnrollment.count({ where: { studioId: user.studioId, studentId, active: true, recurringScheduleId: scheduleId ? { not: scheduleId } : undefined } });
+    if (count + 1 > plan.sessionsPerWeek && !(confirmed && (user.role === 'ADMIN' || user.permissions.includes('capacity.override')))) throw new BadRequestException('Weekly frequency exceeded; explicit authorized confirmation is required');
   }
 
   async generate(user: AuthenticatedUser, id: string, from: Date, to: Date) {
@@ -496,4 +523,14 @@ function dateTimeParts(date: Date, timezone: string): LocalDateTimeParts {
 
 function isUniqueConstraintError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
+
+export function timeIntervalsOverlap(startA: string, durationA: number, startB: string, durationB: number): boolean {
+  const toMinutes = (value: string): number => {
+    const [hours = 0, minutes = 0] = value.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+  const from = toMinutes(startA);
+  const otherFrom = toMinutes(startB);
+  return from < otherFrom + durationB && otherFrom < from + durationA;
 }

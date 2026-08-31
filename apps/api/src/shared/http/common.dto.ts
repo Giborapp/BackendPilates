@@ -12,14 +12,18 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  ValidateNested,
   Length,
   Max,
   Min,
 } from 'class-validator';
 import {
   AssessmentStatus,
+  AssessmentAudience,
+  AssessmentTemplateStatus,
   AttendanceStatus,
   BookingType,
+  JustifiedAbsencePeriod,
   PaymentMethod,
   PaymentStatus,
   Role,
@@ -47,6 +51,21 @@ export class CreateStudentDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(200) monthlyLessonLimit?: number;
   @IsOptional() @IsString() generalNotes?: string;
   @IsOptional() @IsString() importantCareNotes?: string;
+}
+
+export class CreateQuickStudentDto {
+  @IsString() fullName!: string;
+  @IsString() phone!: string;
+  @IsDateString() startDate!: string;
+  @Type(() => Number) @IsInt() @Min(1) @Max(14) sessionsPerWeek!: number;
+  @Type(() => Number) @IsInt() @Min(1) @Max(31) billingDay!: number;
+  @IsOptional() @IsUUID() planId?: string;
+  @IsOptional() @IsNumberString() amount?: string;
+}
+
+export class StudentDuplicateQueryDto {
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsEmail() email?: string;
 }
 
 export class UpdateStudentDto extends CreateStudentDto {}
@@ -125,6 +144,8 @@ export class PaymentQueryDto {
 }
 
 export class CreateScheduleDto {
+  @IsOptional() @IsArray() @IsUUID('4', { each: true }) studentIds?: string[];
+  @IsOptional() @IsBoolean() confirmFrequencyOverride?: boolean;
   @IsOptional() @IsUUID() unitId?: string;
   @IsOptional() @IsUUID() roomId?: string;
   @IsUUID() professionalId!: string;
@@ -159,6 +180,25 @@ export class CreateRecurringEnrollmentDto {
 export class GenerateSessionsDto {
   @IsDateString() from!: string;
   @IsDateString() to!: string;
+}
+
+export class UpdateStudioSettingsDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(15) @Max(240) defaultClassDurationMinutes?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) defaultClassCapacity?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(168) cancellationNoticeHours?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(20) maxJustifiedAbsences?: number;
+  @IsOptional() @IsEnum(JustifiedAbsencePeriod) justifiedAbsencePeriod?: JustifiedAbsencePeriod;
+  @IsOptional() @Type(() => Number) @IsInt() @IsIn([30, 60, 90]) replacementCreditValidityDays?: number;
+  @IsOptional() @IsBoolean() allowCreditCarryOver?: boolean;
+  @IsOptional() @IsBoolean() requireJustificationText?: boolean;
+  @IsOptional() @IsBoolean() requireAdminApprovalForJustification?: boolean;
+  @IsOptional() @IsBoolean() allowReplacementWithOtherProfessional?: boolean;
+  @IsOptional() @IsBoolean() allowReplacementAtOtherTime?: boolean;
+  @IsOptional() @IsBoolean() allowReplacementAtOtherUnit?: boolean;
+  @IsOptional() @IsBoolean() replacementNoShowConsumesCredit?: boolean;
+  @IsOptional() @IsBoolean() allowOverbooking?: boolean;
+  @IsOptional() @IsBoolean() trialClassOccupiesCapacity?: boolean;
+  @IsOptional() @IsBoolean() automaticWaitingList?: boolean;
 }
 
 export class CreateClassSessionDto {
@@ -210,8 +250,23 @@ export class UpdateTrialStatusDto {
 export class CreateTemplateDto {
   @IsString() name!: string;
   @IsOptional() @IsString() description?: string;
-  @IsArray()
-  fields!: unknown;
+  @IsOptional() @IsEnum(AssessmentAudience) audience?: AssessmentAudience;
+  @IsOptional() @IsEnum(AssessmentTemplateStatus) status?: AssessmentTemplateStatus;
+  @IsArray() @ValidateNested({ each: true }) @Type(() => AssessmentFieldDto)
+  fields!: AssessmentFieldDto[];
+}
+
+export class AssessmentFieldDto {
+  @IsString() id!: string;
+  @IsString() label!: string;
+  @IsIn(['short_text', 'long_text', 'number', 'date', 'boolean', 'single_select', 'multi_select', 'numeric_scale', 'pain_scale', 'measure', 'section']) type!: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsBoolean() required?: boolean;
+  @IsOptional() @IsArray() @IsString({ each: true }) options?: string[];
+  @IsOptional() @IsString() unit?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(-1000) @Max(1000) order?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(-1000) @Max(1000) minimum?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(-1000) @Max(1000) maximum?: number;
 }
 
 export class CreateAssessmentDto {

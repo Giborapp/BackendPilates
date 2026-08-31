@@ -169,6 +169,59 @@ describe('FilesService', () => {
       NotFoundException,
     );
   });
+
+  it('allows studio-owned files only for studio settings managers', async () => {
+    const context = createServiceContext();
+    context.prisma.studio.findFirstOrThrow.mockResolvedValue({ id: user.studioId });
+    context.prisma.fileAsset.create.mockResolvedValue({
+      ...fileRecord({ status: FileAssetStatus.PENDING }),
+      ownerType: FileOwnerType.STUDIO,
+      ownerId: user.studioId,
+    });
+    context.storage.createUploadTarget.mockResolvedValue({
+      uploadUrl: 'https://signed-logo-put.example',
+      expiresAt: new Date('2026-08-25T12:05:00.000Z'),
+    });
+
+    await expect(
+      context.service.requestUpload(user, 'http://localhost:3000', {
+        ownerType: FileOwnerType.STUDIO,
+        ownerId: user.studioId,
+        mimeType: 'image/png',
+        size: 120,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    const result = await context.service.requestUpload(
+      { ...user, permissions: ['studio_settings.manage'] },
+      'http://localhost:3000',
+      {
+        ownerType: FileOwnerType.STUDIO,
+        ownerId: user.studioId,
+        mimeType: 'image/png',
+        size: 120,
+      },
+    );
+
+    expect(result.uploadUrl).toBe('https://signed-logo-put.example');
+  });
+
+  it('rejects studio-owned files when ownerId is not the authenticated studio', async () => {
+    const context = createServiceContext();
+
+    await expect(
+      context.service.requestUpload(
+        { ...user, permissions: ['studio_settings.manage'] },
+        'http://localhost:3000',
+        {
+          ownerType: FileOwnerType.STUDIO,
+          ownerId: '99999999-9999-4999-8999-999999999999',
+          mimeType: 'image/png',
+          size: 120,
+        },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
 });
 
 describe('StorageService local driver', () => {
@@ -222,6 +275,7 @@ describe('StorageService local driver', () => {
 function createServiceContext(options: { fileUploadMaxBytes?: number } = {}) {
   const prisma = {
     student: { findFirstOrThrow: jest.fn() },
+    studio: { findFirstOrThrow: jest.fn() },
     staffMember: { findFirstOrThrow: jest.fn() },
     assessment: { findFirstOrThrow: jest.fn() },
     fileAsset: {

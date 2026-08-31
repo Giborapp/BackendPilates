@@ -1,0 +1,1 @@
+ALTER TABLE "StudentPlan" ADD COLUMN "sessionsPerWeek" INTEGER NOT NULL DEFAULT 1;

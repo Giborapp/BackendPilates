@@ -32,4 +32,21 @@ describe('assessment validator', () => {
       }),
     ).toThrow(BadRequestException);
   });
+
+  it('counts sections outside the forty-question limit', () => {
+    const fields = Array.from({ length: 40 }, (_, index) => ({ id: `q${index}`, label: `Question ${index}`, type: 'short_text' }));
+    expect(() => parseTemplateFields([{ id: 'section', label: 'Section', type: 'section' }, ...fields])).not.toThrow();
+    expect(() => parseTemplateFields([...fields, { id: 'q40', label: 'Question 40', type: 'short_text' }])).toThrow(BadRequestException);
+  });
+
+  it('validates all supported field types and numeric ranges', () => {
+    expect(() => parseTemplateFields([
+      { id: 'date', label: 'Date', type: 'date' },
+      { id: 'multi', label: 'Multi', type: 'multi_select', options: ['a', 'b'] },
+      { id: 'scale', label: 'Scale', type: 'numeric_scale', minimum: 1, maximum: 5 },
+      { id: 'measure', label: 'Measure', type: 'measure', unit: 'cm' },
+      { id: 'section', label: 'Section', type: 'section' },
+    ])).not.toThrow();
+    expect(() => parseTemplateFields([{ id: 'pain', label: 'Pain', type: 'pain_scale', minimum: 1, maximum: 10 }])).toThrow(BadRequestException);
+  });
 });

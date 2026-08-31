@@ -5,7 +5,7 @@ import { PermissionsGuard } from '@/shared/auth/permissions.guard';
 import { RequirePermissions } from '@/shared/auth/permissions';
 import { CurrentUser } from '@/shared/auth/current-user.decorator';
 import type { AuthenticatedUser } from '@/shared/auth/auth.types';
-import { CreateStudentDto, IdParamDto, UpdateStudentDto } from '@/shared/http/common.dto';
+import { CreateQuickStudentDto, CreateStudentDto, IdParamDto, StudentDuplicateQueryDto, UpdateStudentDto } from '@/shared/http/common.dto';
 import { PaginationDto } from '@/shared/http/pagination.dto';
 import { StudentsService } from './students.service';
 
@@ -20,6 +20,18 @@ export class StudentsController {
   @RequirePermissions('students.read')
   list(@CurrentUser() user: AuthenticatedUser, @Query() query: PaginationDto) {
     return this.students.list(user, query);
+  }
+
+  @Get('duplicates/check')
+  @RequirePermissions('students.read')
+  duplicates(@CurrentUser() user: AuthenticatedUser, @Query() query: StudentDuplicateQueryDto) {
+    return this.students.duplicates(user, query);
+  }
+
+  @Post('quick')
+  @RequirePermissions('students.create')
+  createQuick(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateQuickStudentDto) {
+    return this.students.createQuick(user, dto);
   }
 
   @Get(':id')

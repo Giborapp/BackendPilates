@@ -117,6 +117,13 @@ enum ReplacementCreditStatus {
   CANCELLED
 }
 
+enum PublicReplacementLinkStatus {
+  OPEN
+  USED
+  REVOKED
+  EXPIRED
+}
+
 enum WaitingListStatus {
   WAITING
   OFFERED
@@ -130,7 +137,38 @@ enum AssessmentStatus {
   AMENDED
 }
 
+enum AssessmentAudience {
+  STUDENT
+  PROFESSIONAL
+}
+
+enum AssessmentTemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PublicInviteType {
+  NEW_STUDENT
+  EXISTING_STUDENT
+}
+
+enum PublicInviteStatus {
+  OPEN
+  SUBMITTED
+  REVOKED
+  EXPIRED
+}
+
+enum IntakeRequestStatus {
+  PENDING
+  APPROVED
+  MERGED
+  REJECTED
+}
+
 enum FileOwnerType {
+  STUDIO
   STUDENT
   STAFF
   ASSESSMENT
@@ -149,6 +187,19 @@ model Studio {
   email        String          @unique
   passwordHash String
   phone        String?
+  whatsapp     String?
+  zipCode      String?
+  street       String?
+  number       String?
+  complement   String?
+  district     String?
+  city         String?
+  state        String?
+  cnpj         String?
+  brandColor   String          @default("#1f7a6d")
+  logoFileAssetId String?      @db.Uuid
+  onboardingStep Int           @default(0)
+  onboardingCompletedAt DateTime?
   timezone     String          @default("America/Sao_Paulo")
   locale       String          @default("pt-BR")
   currency     String          @default("BRL")
@@ -159,12 +210,16 @@ model Studio {
   units        Unit[]
   staff        StaffMember[]
   devices      DeviceSession[]
+  publicInvites PublicInvite[]
+  intakeRequests PublicIntakeRequest[]
+  publicReplacementLinks PublicReplacementLink[]
 
   @@index([email])
 }
 
 model StudioSettings {
   studioId                               String                 @id @db.Uuid
+  defaultClassDurationMinutes            Int                    @default(50)
   defaultClassCapacity                   Int                    @default(6)
   cancellationNoticeHours                Int                    @default(12)
   maxJustifiedAbsences                   Int                    @default(1)
@@ -180,6 +235,8 @@ model StudioSettings {
   allowOverbooking                       Boolean                @default(false)
   trialClassOccupiesCapacity             Boolean                @default(true)
   automaticWaitingList                   Boolean                @default(true)
+  publicPrivacyNotice                   String?
+  publicPrivacyContact                  String?
   createdAt                              DateTime               @default(now())
   updatedAt                              DateTime               @updatedAt
   studio                                 Studio                 @relation(fields: [studioId], references: [id], onDelete: Cascade)
@@ -305,6 +362,8 @@ model Student {
   credits               ReplacementCredit[]
   assessments           Assessment[]
   recurringEnrollments  RecurringEnrollment[]
+  intakeRequests        PublicIntakeRequest[]
+  publicInvites         PublicInvite[]
 
   @@index([studioId, status])
 }
@@ -348,6 +407,7 @@ model StudentPlan {
   studioId   String            @db.Uuid
   studentId  String            @db.Uuid
   planId     String            @db.Uuid
+  sessionsPerWeek Int
   amount     Decimal           @db.Decimal(12, 2)
   billingDay Int
   startDate  DateTime          @db.Date
@@ -499,8 +559,26 @@ model ReplacementCredit {
   student            Student                 @relation(fields: [studentId], references: [id])
   sourceAttendance   Attendance?             @relation(fields: [sourceAttendanceId], references: [id])
   usedBooking        ClassBooking?           @relation("CreditBooking")
+  publicLinks        PublicReplacementLink[]
 
   @@index([studioId, studentId, status])
+}
+
+model PublicReplacementLink {
+  id                  String                     @id @default(uuid()) @db.Uuid
+  studioId            String                     @db.Uuid
+  replacementCreditId String                     @unique @db.Uuid
+  tokenHash           String                     @unique
+  status              PublicReplacementLinkStatus @default(OPEN)
+  expiresAt           DateTime
+  usedAt              DateTime?
+  revokedAt           DateTime?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  studio              Studio                     @relation(fields: [studioId], references: [id])
+  replacementCredit   ReplacementCredit          @relation(fields: [replacementCreditId], references: [id])
+
+  @@index([studioId, status, expiresAt])
 }
 
 model WaitingListEntry {
@@ -525,15 +603,60 @@ model AssessmentTemplate {
   description      String?
   version          Int          @default(1)
   fields           Json
+  audience         AssessmentAudience      @default(STUDENT)
+  status           AssessmentTemplateStatus @default(PUBLISHED)
   active           Boolean      @default(true)
   createdByStaffId String?      @db.Uuid
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   archivedAt       DateTime?
   assessments      Assessment[]
+  publicInvites    PublicInvite[]
 
   @@unique([studioId, name, version])
-  @@index([studioId, active])
+  @@index([studioId, active, status])
+}
+
+model PublicInvite {
+  id             String            @id @default(uuid()) @db.Uuid
+  studioId       String            @db.Uuid
+  templateId     String            @db.Uuid
+  studentId      String?           @db.Uuid
+  type           PublicInviteType
+  status         PublicInviteStatus @default(OPEN)
+  tokenHash      String            @unique
+  expiresAt      DateTime
+  submittedAt    DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  studio         Studio             @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  template       AssessmentTemplate @relation(fields: [templateId], references: [id])
+  student        Student?           @relation(fields: [studentId], references: [id])
+  request        PublicIntakeRequest?
+
+  @@index([studioId, status, expiresAt])
+  @@index([studioId, studentId])
+}
+
+model PublicIntakeRequest {
+  id                 String              @id @default(uuid()) @db.Uuid
+  studioId           String              @db.Uuid
+  inviteId           String              @unique @db.Uuid
+  studentId          String?             @db.Uuid
+  status             IntakeRequestStatus  @default(PENDING)
+  standardData       Json
+  answers            Json
+  rejectionReason    String?
+  reviewedByStaffId  String?             @db.Uuid
+  reviewedAt         DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  studio             Studio              @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  invite             PublicInvite        @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  student            Student?            @relation(fields: [studentId], references: [id])
+
+  @@index([studioId, status, createdAt])
 }
 
 model Assessment {

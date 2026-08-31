@@ -6,43 +6,66 @@ import { RequirePermissions } from '@/shared/auth/permissions';
 import { CurrentUser } from '@/shared/auth/current-user.decorator';
 import type { AuthenticatedUser } from '@/shared/auth/auth.types';
 import { CreateTemplateDto, IdParamDto } from '@/shared/http/common.dto';
-import { parseTemplateFields } from '@/shared/domain/assessment-validator';
-import { PrismaService } from '@/shared/prisma/prisma.service';
+import { AssessmentTemplatesService } from './assessment-templates.service';
 
 @ApiTags('assessment-templates')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('assessment-templates')
 export class AssessmentTemplatesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly templates: AssessmentTemplatesService) {}
+
+  @Get('presets')
+  @RequirePermissions('assessments.read')
+  presets() {
+    return this.templates.presets();
+  }
+
+  @Post('presets/:key/copy')
+  @RequirePermissions('assessment_templates.manage')
+  clonePreset(@CurrentUser() user: AuthenticatedUser, @Param('key') key: string) {
+    return this.templates.clonePreset(user, key);
+  }
 
   @Get()
   @RequirePermissions('assessments.read')
   list(@CurrentUser() user: AuthenticatedUser) {
-    return this.prisma.assessmentTemplate.findMany({ where: { studioId: user.studioId, archivedAt: null } });
+    return this.templates.list(user);
   }
 
   @Get(':id')
   @RequirePermissions('assessments.read')
   get(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
-    return this.prisma.assessmentTemplate.findFirstOrThrow({
-      where: { id: params.id, studioId: user.studioId, archivedAt: null },
-    });
+    return this.templates.get(user, params.id);
   }
 
   @Post()
   @RequirePermissions('assessment_templates.manage')
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateTemplateDto) {
-    const fields = parseTemplateFields(dto.fields);
-    return this.prisma.assessmentTemplate.create({ data: { studioId: user.studioId, name: dto.name, description: dto.description, fields, createdByStaffId: user.staffMemberId } });
+    return this.templates.create(user, dto);
   }
 
   @Patch(':id')
   @RequirePermissions('assessment_templates.manage')
-  async newVersion(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto, @Body() dto: CreateTemplateDto) {
-    const before = await this.prisma.assessmentTemplate.findFirstOrThrow({ where: { id: params.id, studioId: user.studioId } });
-    const fields = parseTemplateFields(dto.fields);
-    await this.prisma.assessmentTemplate.update({ where: { id: before.id }, data: { active: false, archivedAt: new Date() } });
-    return this.prisma.assessmentTemplate.create({ data: { studioId: user.studioId, name: dto.name ?? before.name, description: dto.description ?? before.description, version: before.version + 1, fields, createdByStaffId: user.staffMemberId } });
+  update(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto, @Body() dto: CreateTemplateDto) {
+    return this.templates.update(user, params.id, dto);
+  }
+
+  @Post(':id/publish')
+  @RequirePermissions('assessment_templates.manage')
+  publish(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
+    return this.templates.publish(user, params.id);
+  }
+
+  @Post(':id/archive')
+  @RequirePermissions('assessment_templates.manage')
+  archive(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
+    return this.templates.archive(user, params.id);
+  }
+
+  @Post(':id/restore')
+  @RequirePermissions('assessment_templates.manage')
+  restore(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
+    return this.templates.restore(user, params.id);
   }
 }

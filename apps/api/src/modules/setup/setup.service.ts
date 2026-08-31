@@ -152,6 +152,7 @@ export class SetupService {
           studioId: studio.id,
           studentId: maria.id,
           planId: plan.id,
+          sessionsPerWeek: plan.sessionsPerWeek,
           amount: '390.00',
           billingDay: 10,
           startDate: now,

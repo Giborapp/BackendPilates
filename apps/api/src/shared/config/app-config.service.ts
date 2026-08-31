@@ -26,6 +26,12 @@ export class AppConfigService {
       .filter(Boolean);
   }
 
+  get publicWebUrl(): string | undefined {
+    return this.config.get('PUBLIC_WEB_URL', { infer: true });
+  }
+
+  get turnstileSecretKey(): string | undefined { return this.config.get<string>('TURNSTILE_SECRET_KEY'); }
+
   get accessTokenSecret(): string {
     return this.config.get('ACCESS_TOKEN_SECRET', { infer: true });
   }

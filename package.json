@@ -9,11 +9,13 @@
     "typecheck": "pnpm --filter @pilates-manager/api typecheck",
     "test": "pnpm --filter @pilates-manager/api test",
     "test:e2e": "pnpm --filter @pilates-manager/api test:e2e",
+    "test:e2e:integration": "node scripts/test-e2e-integration.mjs",
     "prisma:generate": "pnpm --filter @pilates-manager/api prisma:generate",
     "prisma:validate": "pnpm --filter @pilates-manager/api prisma:validate",
     "prisma:migrate": "pnpm --filter @pilates-manager/api prisma:migrate",
     "prisma:deploy": "pnpm --filter @pilates-manager/api prisma:deploy",
     "prisma:seed": "pnpm --filter @pilates-manager/api prisma:seed"
+    ,"openapi": "pnpm --filter @pilates-manager/api openapi"
   },
   "devDependencies": {
     "@prisma/client": "6.19.3",

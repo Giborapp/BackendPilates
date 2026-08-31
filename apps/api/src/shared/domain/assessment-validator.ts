@@ -1,16 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 
-type TemplateField = {
-  id: string;
-  label: string;
-  type: string;
-  required?: boolean;
-  options?: string[];
-  minimum?: number;
-  maximum?: number;
-};
-
-const FIELD_TYPES = new Set([
+export const ASSESSMENT_FIELD_TYPES = [
   'short_text',
   'long_text',
   'number',
@@ -21,33 +11,81 @@ const FIELD_TYPES = new Set([
   'numeric_scale',
   'pain_scale',
   'measure',
-  'image',
-  'signature',
   'section',
-]);
+] as const;
+
+export type AssessmentFieldType = (typeof ASSESSMENT_FIELD_TYPES)[number];
+
+export type TemplateField = {
+  id: string;
+  label: string;
+  type: AssessmentFieldType;
+  description?: string;
+  required?: boolean;
+  options?: string[];
+  unit?: string;
+  order?: number;
+  minimum?: number;
+  maximum?: number;
+};
+
+const FIELD_TYPES = new Set<string>(ASSESSMENT_FIELD_TYPES);
+const MAX_QUESTIONS = 40;
 
 export function parseTemplateFields(fields: unknown): TemplateField[] {
   if (!Array.isArray(fields)) {
     throw new BadRequestException('Template fields must be an array');
   }
-  return fields.map((field, index) => {
+  const parsed = fields.map((field, index) => {
     if (!field || typeof field !== 'object') {
       throw new BadRequestException(`Invalid field at index ${index}`);
     }
     const candidate = field as Partial<TemplateField>;
-    if (!candidate.id || !candidate.label || !candidate.type || !FIELD_TYPES.has(candidate.type)) {
+    if (
+      typeof candidate.id !== 'string' ||
+      typeof candidate.label !== 'string' ||
+      candidate.label.trim().length === 0 ||
+      typeof candidate.type !== 'string' ||
+      !FIELD_TYPES.has(candidate.type)
+    ) {
       throw new BadRequestException(`Invalid field at index ${index}`);
+    }
+    if (['single_select', 'multi_select'].includes(candidate.type)) {
+      if (!Array.isArray(candidate.options) || candidate.options.length === 0 || candidate.options.some((item) => typeof item !== 'string' || item.trim() === '')) {
+        throw new BadRequestException(`Options are required at index ${index}`);
+      }
+    }
+    const minimum = candidate.type === 'pain_scale' ? (candidate.minimum ?? 0) : candidate.minimum;
+    const maximum = candidate.type === 'pain_scale' ? (candidate.maximum ?? 10) : candidate.maximum;
+    if (candidate.type === 'pain_scale' && (minimum !== 0 || maximum !== 10)) {
+      throw new BadRequestException('Pain scale must range from 0 to 10');
+    }
+    if (candidate.minimum !== undefined && typeof candidate.minimum !== 'number') {
+      throw new BadRequestException(`Invalid minimum at index ${index}`);
+    }
+    if (candidate.maximum !== undefined && typeof candidate.maximum !== 'number') {
+      throw new BadRequestException(`Invalid maximum at index ${index}`);
+    }
+    if (candidate.minimum !== undefined && candidate.maximum !== undefined && candidate.minimum > candidate.maximum) {
+      throw new BadRequestException(`Invalid range at index ${index}`);
     }
     return {
       id: candidate.id,
-      label: candidate.label,
+      label: candidate.label.trim(),
       type: candidate.type,
+      description: candidate.description,
       required: Boolean(candidate.required),
       options: candidate.options,
-      minimum: candidate.minimum,
-      maximum: candidate.maximum,
+      unit: candidate.unit,
+      order: candidate.order,
+      minimum,
+      maximum,
     };
   });
+  if (parsed.filter((field) => field.type !== 'section').length > MAX_QUESTIONS) {
+    throw new BadRequestException(`Templates cannot have more than ${MAX_QUESTIONS} questions`);
+  }
+  return parsed;
 }
 
 export function validateAnswers(fields: TemplateField[], answers: unknown): void {
@@ -63,11 +101,17 @@ export function validateAnswers(fields: TemplateField[], answers: unknown): void
     if (value === undefined || value === null || field.type === 'section') {
       continue;
     }
-    if (['short_text', 'long_text', 'image', 'signature'].includes(field.type) && typeof value !== 'string') {
+    if (['short_text', 'long_text'].includes(field.type) && typeof value !== 'string') {
       throw new BadRequestException(`Invalid answer type for ${field.id}`);
     }
     if (['number', 'numeric_scale', 'pain_scale', 'measure'].includes(field.type) && typeof value !== 'number') {
       throw new BadRequestException(`Invalid answer type for ${field.id}`);
+    }
+    if (typeof value === 'number' && field.minimum !== undefined && value < field.minimum) {
+      throw new BadRequestException(`Answer below minimum for ${field.id}`);
+    }
+    if (typeof value === 'number' && field.maximum !== undefined && value > field.maximum) {
+      throw new BadRequestException(`Answer above maximum for ${field.id}`);
     }
     if (field.type === 'boolean' && typeof value !== 'boolean') {
       throw new BadRequestException(`Invalid answer type for ${field.id}`);

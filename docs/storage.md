@@ -41,6 +41,10 @@ Do not commit real values. `FILE_UPLOAD_MAX_BYTES` defaults to `10000000`.
 
 Allowed types: PDF, JPEG, PNG, WebP.
 
+Studio logos use the same private storage driver through dedicated studio
+endpoints. Logo uploads are owned by the authenticated studio, not by a
+client-provided `studioId`, and are restricted to PNG or WebP with a 2 MB limit.
+
 ## Download and deletion
 
 - `GET /files/:id/download` returns a short-lived GET URL.

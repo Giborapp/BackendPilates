@@ -6,6 +6,7 @@ import {
   matchingLocalDates,
   RecurringSchedulesService,
   startsAtForLocalDate,
+  timeIntervalsOverlap,
 } from '../src/modules/classes/recurring-schedules.service';
 
 type ScheduleRelationsResolver = {
@@ -18,6 +19,16 @@ type ScheduleRelationsResolver = {
 };
 
 describe('recurring schedule rules', () => {
+  it.each([
+    ['08:00', 60, '09:00', 60, false],
+    ['08:00', 60, '08:30', 30, true],
+    ['08:00', 120, '09:00', 30, true],
+    ['08:00', 30, '07:00', 120, true],
+    ['08:00', 30, '08:30', 30, false],
+  ])('detects partial, contained and boundary overlaps', (startA, durationA, startB, durationB, expected) => {
+    expect(timeIntervalsOverlap(startA, durationA, startB, durationB)).toBe(expected);
+  });
+
   it('generates matching dates by the studio local weekday', () => {
     const dates = matchingLocalDates(
       new Date('2026-08-01T00:00:00.000Z'),

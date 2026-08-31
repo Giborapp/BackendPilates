@@ -5,6 +5,7 @@ import { PermissionsGuard } from '@/shared/auth/permissions.guard';
 import { CurrentUser } from '@/shared/auth/current-user.decorator';
 import type { AuthenticatedUser } from '@/shared/auth/auth.types';
 import { RequirePermissions } from '@/shared/auth/permissions';
+import { UpdateStudioSettingsDto } from '@/shared/http/common.dto';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 
@@ -22,7 +23,7 @@ export class StudioSettingsController {
 
   @Patch()
   @RequirePermissions('studio_settings.manage')
-  async update(@CurrentUser() user: AuthenticatedUser, @Body() body: Record<string, unknown>) {
+  async update(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateStudioSettingsDto) {
     const before = await this.prisma.studioSettings.findUnique({ where: { studioId: user.studioId } });
     const after = await this.prisma.studioSettings.update({ where: { studioId: user.studioId }, data: body });
     await this.audit.record({ studioId: user.studioId, actorStaffId: user.staffMemberId, action: 'studio_settings.update', entityType: 'StudioSettings', entityId: user.studioId, before: before ?? {}, after });

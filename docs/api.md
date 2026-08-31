@@ -24,6 +24,10 @@ Optional staff pairs:
 The response matches studio login: `{ studio, deviceExpiresAt }` and sets the
 `device_token` cookie. The client should redirect to PIN unlock after success.
 
+The frontend only asks for the required fields on the first screen. Optional
+studio profile, operation, initial plans and visual identity fields are handled
+by the resumable onboarding endpoints documented in `docs/studio-onboarding.md`.
+
 ## Operational class flow
 
 - `POST /recurring-schedules` creates a weekly class time and generates upcoming sessions.
@@ -56,7 +60,9 @@ Students accept `monthlyLessonLimit` on create/update. `monthlyLessonsUsed` and
 - `POST /assessments` records an assessment for a student.
 
 Admins and professionals can create assessment templates. Assessment answers are
-validated against the selected template fields.
+validated against the selected template fields. Rules for the three published
+slots, 40-question limit, presets, audiences, and versioning are documented in
+`docs/assessment-templates.md`.
 
 ## Private files
 
@@ -71,3 +77,5 @@ validated against the selected template fields.
 The API accepts only PDF, JPEG, PNG, and WebP. The owner must belong to the
 authenticated studio. Student-owned files use student permissions; assessment
 files use assessment permissions; staff files require staff management.
+Studio logos use dedicated `/studios/logo/*` endpoints, are owned by the
+authenticated studio, and accept only PNG or WebP up to 2 MB.

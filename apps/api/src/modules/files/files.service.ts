@@ -239,6 +239,13 @@ export class FilesService {
       await this.prisma.student.findFirstOrThrow({ where: { id: ownerId, studioId, archivedAt: null } });
       return;
     }
+    if (ownerType === FileOwnerType.STUDIO) {
+      if (ownerId !== studioId) {
+        throw new ForbiddenException('Permission denied');
+      }
+      await this.prisma.studio.findFirstOrThrow({ where: { id: studioId } });
+      return;
+    }
     if (ownerType === FileOwnerType.STAFF) {
       await this.prisma.staffMember.findFirstOrThrow({ where: { id: ownerId, studioId, archivedAt: null } });
       return;
@@ -275,12 +282,16 @@ export class FilesService {
       this.assertPermission(user, ['staff.manage']);
       return;
     }
+    if (ownerType === FileOwnerType.STUDIO) {
+      this.assertPermission(user, ['studio_settings.manage']);
+      return;
+    }
     this.assertPermission(user, action === 'read' ? ['students.read'] : ['students.update_basic']);
   }
 
   private readableOwnerTypes(user: AuthenticatedUser): FileOwnerType[] {
     if (user.role === 'ADMIN') {
-      return [FileOwnerType.STUDENT, FileOwnerType.ASSESSMENT, FileOwnerType.STAFF];
+      return [FileOwnerType.STUDIO, FileOwnerType.STUDENT, FileOwnerType.ASSESSMENT, FileOwnerType.STAFF];
     }
     const granted = new Set(user.permissions);
     const ownerTypes: FileOwnerType[] = [];
@@ -292,6 +303,9 @@ export class FilesService {
     }
     if (granted.has('staff.manage')) {
       ownerTypes.push(FileOwnerType.STAFF);
+    }
+    if (granted.has('studio_settings.manage')) {
+      ownerTypes.push(FileOwnerType.STUDIO);
     }
     if (ownerTypes.length === 0) {
       throw new ForbiddenException('Permission denied');

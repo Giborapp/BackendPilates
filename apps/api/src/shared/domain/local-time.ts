@@ -34,6 +34,14 @@ export function addLocalMonths(date: Date, months: number, timezone: string): Da
   }, timezone);
 }
 
+export function billingDateForMonth(year: number, month: number, billingDay: number, timezone = 'UTC'): Date {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(billingDay) || billingDay < 1 || billingDay > 31) {
+    throw new RangeError('Invalid billing date');
+  }
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return zonedTimeToUtc({ year, month, day: Math.min(billingDay, lastDay), hour: 0, minute: 0, second: 0 }, timezone);
+}
+
 type LocalDateTimeParts = {
   year: number;
   month: number;

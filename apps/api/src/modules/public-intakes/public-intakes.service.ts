@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
-import { AssessmentStatus, AssessmentTemplateStatus, IntakeRequestStatus, Prisma, PublicInviteStatus, PublicInviteType, StudentStatus } from '@prisma/client';
+import { AssessmentStatus, AssessmentTemplateStatus, ClinicalReviewStatus, IntakeRequestStatus, Prisma, PublicInviteStatus, PublicInviteType, StudentStatus } from '@prisma/client';
 import type { AuthenticatedUser } from '@/shared/auth/auth.types';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../files/storage.service';
-import { parseTemplateFields, validateAnswers } from '@/shared/domain/assessment-validator';
+import { parseTemplateFields, requiresProfessionalReview, validateAnswers } from '@/shared/domain/assessment-validator';
 import { AppConfigService } from '@/shared/config/app-config.service';
 import { CreatePublicInviteDto, IntakeRequestQueryDto, MergeIntakeRequestDto, RejectIntakeRequestDto, SubmitPublicIntakeDto } from './public-intakes.dto';
 
@@ -54,7 +54,7 @@ export class PublicIntakesService {
     const template = await this.prisma.assessmentTemplate.findUniqueOrThrow({ where: { id: invite.templateId } });
     const fields = parseTemplateFields(template.fields);
     validateAnswers(fields, dto.answers);
-    const request = await this.prisma.publicIntakeRequest.create({ data: { studioId: invite.studioId, inviteId: invite.id, studentId: invite.studentId, standardData: { fullName: dto.fullName.trim(), birthDate: dto.birthDate, phone: dto.phone.trim(), email: dto.email?.trim(), emergencyContactName: dto.emergencyContactName.trim(), emergencyContactPhone: dto.emergencyContactPhone.trim(), privacyAccepted: true, truthfulnessAccepted: true }, answers: dto.answers as Prisma.InputJsonValue } });
+    const request = await this.prisma.publicIntakeRequest.create({ data: { studioId: invite.studioId, inviteId: invite.id, studentId: invite.studentId, standardData: { fullName: dto.fullName.trim(), birthDate: dto.birthDate, phone: dto.phone.trim(), email: dto.email?.trim(), emergencyContactName: dto.emergencyContactName.trim(), emergencyContactRelationship: dto.emergencyContactRelationship.trim(), emergencyContactPhone: dto.emergencyContactPhone.trim(), privacyAccepted: true, truthfulnessAccepted: true }, answers: dto.answers as Prisma.InputJsonValue } });
     await this.prisma.publicInvite.update({ where: { id: invite.id }, data: { status: PublicInviteStatus.SUBMITTED, submittedAt: new Date() } });
     await this.audit.record({ studioId: invite.studioId, action: 'public_intakes.submitted', entityType: 'PublicIntakeRequest', entityId: request.id, metadata: { inviteType: invite.type } });
     return { submitted: true };
@@ -85,8 +85,8 @@ export class PublicIntakesService {
     const result = await this.prisma.$transaction(async (tx) => {
       const duplicate = await tx.student.findFirst({ where: { studioId: user.studioId, OR: [{ phone: standard.phone }, ...(standard.email ? [{ email: standard.email }] : [])], archivedAt: null } });
       if (duplicate) throw new BadRequestException('A possible duplicate student exists; merge explicitly instead');
-      const student = await tx.student.create({ data: { studioId: user.studioId, fullName: standard.fullName, birthDate: new Date(standard.birthDate), phone: standard.phone, email: standard.email, emergencyContactName: standard.emergencyContactName, emergencyContactPhone: standard.emergencyContactPhone, status: StudentStatus.ACTIVE } });
-      const assessment = await tx.assessment.create({ data: { studioId: user.studioId, studentId: student.id, templateId: template.id, templateVersion: template.version, answers: request.answers as Prisma.InputJsonValue, status: AssessmentStatus.COMPLETED, completedAt: new Date(), performedByStaffId: user.staffMemberId } });
+      const student = await tx.student.create({ data: { studioId: user.studioId, fullName: standard.fullName, birthDate: new Date(standard.birthDate), phone: standard.phone, email: standard.email, emergencyContactName: standard.emergencyContactName, emergencyContactRelationship: standard.emergencyContactRelationship, emergencyContactPhone: standard.emergencyContactPhone, status: StudentStatus.ACTIVE } });
+      const assessment = await tx.assessment.create({ data: { studioId: user.studioId, studentId: student.id, templateId: template.id, templateVersion: template.version, answers: request.answers as Prisma.InputJsonValue, status: AssessmentStatus.COMPLETED, clinicalReviewStatus: requiresProfessionalReview(parseTemplateFields(template.fields), request.answers) ? ClinicalReviewStatus.REQUIRES_PROFESSIONAL_REVIEW : ClinicalReviewStatus.NOT_REQUIRED, completedAt: new Date(), performedByStaffId: user.staffMemberId } });
       await tx.publicIntakeRequest.update({ where: { id }, data: { status: IntakeRequestStatus.APPROVED, studentId: student.id, reviewedByStaffId: user.staffMemberId, reviewedAt: new Date() } });
       return { studentId: student.id, assessmentId: assessment.id };
     });
@@ -99,7 +99,7 @@ export class PublicIntakesService {
     await this.prisma.student.findFirstOrThrow({ where: { id: dto.studentId, studioId: user.studioId, archivedAt: null } });
     const assessment = await this.prisma.$transaction(async (tx) => {
       const template = await tx.assessmentTemplate.findUniqueOrThrow({ where: { id: request.invite.templateId } });
-      const created = await tx.assessment.create({ data: { studioId: user.studioId, studentId: dto.studentId, templateId: template.id, templateVersion: template.version, answers: request.answers as Prisma.InputJsonValue, status: AssessmentStatus.COMPLETED, completedAt: new Date(), performedByStaffId: user.staffMemberId } });
+      const created = await tx.assessment.create({ data: { studioId: user.studioId, studentId: dto.studentId, templateId: template.id, templateVersion: template.version, answers: request.answers as Prisma.InputJsonValue, status: AssessmentStatus.COMPLETED, clinicalReviewStatus: requiresProfessionalReview(parseTemplateFields(template.fields), request.answers) ? ClinicalReviewStatus.REQUIRES_PROFESSIONAL_REVIEW : ClinicalReviewStatus.NOT_REQUIRED, completedAt: new Date(), performedByStaffId: user.staffMemberId } });
       await tx.publicIntakeRequest.update({ where: { id }, data: { status: IntakeRequestStatus.MERGED, studentId: dto.studentId, reviewedByStaffId: user.staffMemberId, reviewedAt: new Date() } });
       return created;
     });
@@ -134,10 +134,10 @@ export class PublicIntakesService {
 
 function hashToken(token: string): string { return createHash('sha256').update(token).digest('hex'); }
 
-function asStandardData(value: Prisma.JsonValue): { fullName: string; birthDate: string; phone: string; email?: string; emergencyContactName: string; emergencyContactPhone: string } {
+function asStandardData(value: Prisma.JsonValue): { fullName: string; birthDate: string; phone: string; email?: string; emergencyContactName: string; emergencyContactRelationship: string; emergencyContactPhone: string } {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new BadRequestException('Invalid standard intake data');
   const record = value as Record<string, unknown>;
-  const required = ['fullName', 'birthDate', 'phone', 'emergencyContactName', 'emergencyContactPhone'];
+  const required = ['fullName', 'birthDate', 'phone', 'emergencyContactName', 'emergencyContactRelationship', 'emergencyContactPhone'];
   if (required.some((key) => typeof record[key] !== 'string')) throw new BadRequestException('Invalid standard intake data');
-  return { fullName: record.fullName as string, birthDate: record.birthDate as string, phone: record.phone as string, email: typeof record.email === 'string' ? record.email : undefined, emergencyContactName: record.emergencyContactName as string, emergencyContactPhone: record.emergencyContactPhone as string };
+  return { fullName: record.fullName as string, birthDate: record.birthDate as string, phone: record.phone as string, email: typeof record.email === 'string' ? record.email : undefined, emergencyContactName: record.emergencyContactName as string, emergencyContactRelationship: record.emergencyContactRelationship as string, emergencyContactPhone: record.emergencyContactPhone as string };
 }

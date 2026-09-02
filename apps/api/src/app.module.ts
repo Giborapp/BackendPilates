@@ -30,6 +30,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { SetupModule } from './modules/setup/setup.module';
 import { PublicIntakesModule } from './modules/public-intakes/public-intakes.module';
 import { ReplacementLinksModule } from './modules/replacement-links/replacement-links.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { ReplacementLinksModule } from './modules/replacement-links/replacement-
     SetupModule,
     PublicIntakesModule,
     ReplacementLinksModule,
+    SubscriptionsModule,
   ],
   providers: [
     AppConfigService,

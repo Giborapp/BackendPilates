@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { parseTemplateFields, validateAnswers } from '../src/shared/domain/assessment-validator';
+import { parseTemplateFields, requiresProfessionalReview, validateAnswers } from '../src/shared/domain/assessment-validator';
 
 describe('assessment validator', () => {
   const fields = parseTemplateFields([
@@ -48,5 +48,15 @@ describe('assessment validator', () => {
       { id: 'section', label: 'Section', type: 'section' },
     ])).not.toThrow();
     expect(() => parseTemplateFields([{ id: 'pain', label: 'Pain', type: 'pain_scale', minimum: 1, maximum: 10 }])).toThrow(BadRequestException);
+  });
+
+  it('enforces exclusive answers and detects clinical review rules', () => {
+    const parsed = parseTemplateFields([
+      { id: 'conditions', label: 'Conditions', type: 'multi_select', options: ['Nenhuma', 'Hipertensao'], exclusiveOptions: ['Nenhuma'], reviewWhen: { excludes: ['Nenhuma'] } },
+      { id: 'pain', label: 'Pain', type: 'pain_scale', reviewWhen: { minimum: 7 } },
+    ]);
+    expect(() => validateAnswers(parsed, { conditions: ['Nenhuma', 'Hipertensao'], pain: 1 })).toThrow(BadRequestException);
+    expect(requiresProfessionalReview(parsed, { conditions: ['Hipertensao'], pain: 1 })).toBe(true);
+    expect(requiresProfessionalReview(parsed, { conditions: ['Nenhuma'], pain: 8 })).toBe(true);
   });
 });

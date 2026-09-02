@@ -30,6 +30,7 @@ import {
   StudentStatus,
   TrialStatus,
   Weekday,
+  SubscriptionStatus,
 } from '@prisma/client';
 import { PERMISSIONS } from '@/shared/auth/permissions';
 
@@ -141,6 +142,11 @@ export class PaymentActionDto {
 export class PaymentQueryDto {
   @IsOptional() @IsEnum(PaymentStatus) status?: PaymentStatus;
   @IsOptional() @IsUUID() studentId?: string;
+}
+
+export class SimulateSubscriptionDto {
+  @IsEnum(SubscriptionStatus)
+  status!: SubscriptionStatus;
 }
 
 export class CreateScheduleDto {
@@ -267,6 +273,8 @@ export class AssessmentFieldDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(-1000) @Max(1000) order?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(-1000) @Max(1000) minimum?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(-1000) @Max(1000) maximum?: number;
+  @IsOptional() @IsObject() reviewWhen?: Record<string, unknown>;
+  @IsOptional() @IsArray() @IsString({ each: true }) exclusiveOptions?: string[];
 }
 
 export class CreateAssessmentDto {

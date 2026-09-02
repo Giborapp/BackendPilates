@@ -6,23 +6,30 @@ Responses use conventional HTTP status codes. Protected routes require a bearer 
 
 ## Public account creation
 
-`POST /auth/studio/register` creates a studio account and initial staff PINs.
+`POST /auth/studio/register` creates a studio account, a default administrator,
+a device session and a trial subscription. The new registration flow does not
+ask for staff names or PINs; those are managed by the administrator in the
+team area after access is created.
 
 Required body fields:
 
 - `studioName`
 - `email`
 - `password`
-- `adminName`
-- `adminPin`
+- `responsibleCpf`
 
 Optional staff pairs:
 
 - `professionalName` with `professionalPin`
 - `receptionName` with `receptionPin`
 
-The response matches studio login: `{ studio, deviceExpiresAt }` and sets the
-`device_token` cookie. The client should redirect to PIN unlock after success.
+Optional account fields are `cnpj` and `subscriptionPlan` (`STARTER` or
+`PROFESSIONAL`). The response includes an in-memory `accessToken` and staff
+session, sets `device_token` and `refresh_token`, and redirects to onboarding.
+The selected monthly plan is simulated only; it does not charge a payment.
+
+`GET /billing/subscription` reads the current simulated subscription and
+`PATCH /billing/subscription/simulate` changes its status for test flows.
 
 The frontend only asks for the required fields on the first screen. Optional
 studio profile, operation, initial plans and visual identity fields are handled

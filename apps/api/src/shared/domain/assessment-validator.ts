@@ -27,6 +27,8 @@ export type TemplateField = {
   order?: number;
   minimum?: number;
   maximum?: number;
+  reviewWhen?: { equals?: unknown; includesAny?: string[]; excludes?: string[]; minimum?: number };
+  exclusiveOptions?: string[];
 };
 
 const FIELD_TYPES = new Set<string>(ASSESSMENT_FIELD_TYPES);
@@ -80,6 +82,8 @@ export function parseTemplateFields(fields: unknown): TemplateField[] {
       order: candidate.order,
       minimum,
       maximum,
+      reviewWhen: candidate.reviewWhen,
+      exclusiveOptions: candidate.exclusiveOptions,
     };
   });
   if (parsed.filter((field) => field.type !== 'section').length > MAX_QUESTIONS) {
@@ -123,6 +127,27 @@ export function validateAnswers(fields: TemplateField[], answers: unknown): void
       if (!Array.isArray(value) || value.some((item) => !field.options?.includes(String(item)))) {
         throw new BadRequestException(`Invalid options for ${field.id}`);
       }
+      const selected = value.map(String);
+      const exclusive = field.exclusiveOptions ?? [];
+      if (selected.some((item) => exclusive.includes(item)) && selected.length > 1) {
+        throw new BadRequestException(`Exclusive option cannot be combined for ${field.id}`);
+      }
     }
   }
+}
+
+export function requiresProfessionalReview(fields: TemplateField[], answers: unknown): boolean {
+  if (!answers || typeof answers !== 'object' || Array.isArray(answers)) return false;
+  const values = answers as Record<string, unknown>;
+  return fields.some((field) => {
+    const rule = field.reviewWhen;
+    const value = values[field.id];
+    if (!rule || value === undefined || value === null) return false;
+    if (rule.equals !== undefined && value === rule.equals) return true;
+    if (rule.minimum !== undefined && typeof value === 'number' && value >= rule.minimum) return true;
+    const selected = Array.isArray(value) ? value.map(String) : [String(value)];
+    if (rule.includesAny?.some((item) => selected.includes(item))) return true;
+    if (rule.excludes?.length && selected.some((item) => !rule.excludes?.includes(item))) return true;
+    return false;
+  });
 }

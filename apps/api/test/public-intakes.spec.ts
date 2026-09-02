@@ -39,7 +39,7 @@ describe('public intake links', () => {
     context.prisma.publicInvite.findUnique.mockResolvedValue(invite());
     context.prisma.assessmentTemplate.findUniqueOrThrow.mockResolvedValue({ fields: [{ id: 'q', label: 'Objetivo', type: 'short_text' }] });
     context.prisma.publicIntakeRequest.create.mockResolvedValue({ id: '66666666-6666-4666-8666-666666666666' });
-    const result = await context.service.submit('token', { fullName: 'Teste', birthDate: '1990-01-01', phone: '11999999999', emergencyContactName: 'Contato', emergencyContactPhone: '11888888888', privacyAccepted: true, truthfulnessAccepted: true, answers: { q: 'Saude' } });
+    const result = await context.service.submit('token', { fullName: 'Teste', birthDate: '1990-01-01', phone: '11999999999', emergencyContactName: 'Contato', emergencyContactRelationship: 'Mae', emergencyContactPhone: '11888888888', privacyAccepted: true, truthfulnessAccepted: true, answers: { q: 'Saude' } });
     expect(result).toEqual({ submitted: true });
     expect(context.prisma.publicIntakeRequest.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ standardData: expect.objectContaining({ fullName: 'Teste' }) }) }));
     expect(context.audit.record).toHaveBeenCalledWith(expect.not.objectContaining({ answers: expect.anything(), standardData: expect.anything() }));

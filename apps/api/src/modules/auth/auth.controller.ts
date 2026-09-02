@@ -32,6 +32,9 @@ export class AuthController {
       studioName: dto.studioName,
       email: dto.email,
       password: dto.password,
+      responsibleCpf: dto.responsibleCpf,
+      cnpj: dto.cnpj,
+      subscriptionPlan: dto.subscriptionPlan,
       adminName: dto.adminName,
       adminPin: dto.adminPin,
       professionalName: dto.professionalName,
@@ -42,7 +45,8 @@ export class AuthController {
       userAgent: req.headers['user-agent'],
     });
     this.setCookie(res, 'device_token', result.deviceToken, result.expiresAt);
-    return { studio: result.studio, deviceExpiresAt: result.expiresAt };
+    this.setCookie(res, 'refresh_token', result.refreshToken, result.refreshExpiresAt);
+    return { studio: result.studio, deviceExpiresAt: result.expiresAt, accessToken: result.accessToken, staff: result.staff };
   }
 
   @Post('studio/login')

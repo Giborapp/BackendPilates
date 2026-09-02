@@ -7,13 +7,15 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { Role } from '@prisma/client';
+import { randomInt } from 'crypto';
+import { Role, SubscriptionPlan } from '@prisma/client';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { AppConfigService } from '@/shared/config/app-config.service';
 import { AuditService } from '../audit/audit.service';
 import { mergePermissions } from '@/shared/auth/permissions';
 import { addDuration, randomToken, sha256 } from './token.util';
 import { assertRegistrationPinsAllowed } from './studio-registration';
+import { subscriptionMonthlyAmount, subscriptionPeriodEnd } from '../subscriptions/subscription-policy';
 
 type StudioLoginInput = {
   email: string;
@@ -26,8 +28,11 @@ type StudioRegisterInput = {
   studioName: string;
   email: string;
   password: string;
-  adminName: string;
-  adminPin: string;
+  responsibleCpf?: string;
+  cnpj?: string;
+  subscriptionPlan?: SubscriptionPlan;
+  adminName?: string;
+  adminPin?: string;
   professionalName?: string;
   professionalPin?: string;
   receptionName?: string;
@@ -74,7 +79,8 @@ export class AuthService {
     const rawDeviceToken = randomToken();
     const deviceExpiresAt = addDuration(now, this.config.deviceSessionExpiresIn);
     const passwordHash = await argon2.hash(input.password);
-    const adminPinHash = await argon2.hash(input.adminPin);
+    const adminPin = input.adminPin ?? generateInitialPin();
+    const adminPinHash = await argon2.hash(adminPin);
     const professionalPinHash = input.professionalPin
       ? await argon2.hash(input.professionalPin)
       : undefined;
@@ -87,17 +93,22 @@ export class AuthService {
           slug: await this.uniqueSlug(studioName),
           email,
           passwordHash,
+          responsibleCpf: input.responsibleCpf,
+          cnpj: input.cnpj,
           settings: { create: {} },
+          subscription: {
+            create: createSubscription(input.subscriptionPlan),
+          },
         },
       });
 
       const admin = await tx.staffMember.create({
         data: {
           studioId: studio.id,
-          name: input.adminName.trim(),
+          name: input.adminName?.trim() || 'Administrador',
           role: Role.ADMIN,
           pinHash: adminPinHash,
-          pinLookupHash: sha256(`${studio.id}:${input.adminPin}`),
+          pinLookupHash: sha256(`${studio.id}:${adminPin}`),
         },
       });
 
@@ -146,7 +157,7 @@ export class AuthService {
         },
       });
 
-      return { studio, device };
+      return { studio, device, admin };
     });
 
     const deviceToken = await this.jwt.signAsync(
@@ -154,8 +165,10 @@ export class AuthService {
       { secret: this.config.deviceTokenSecret, expiresIn: this.config.deviceSessionExpiresIn },
     );
 
+    const session = await this.createStaffSession(created.studio.id, created.device.id, created.admin.id);
     return {
       deviceToken,
+      ...session,
       studio: {
         id: created.studio.id,
         name: created.studio.name,
@@ -163,6 +176,8 @@ export class AuthService {
         locale: created.studio.locale,
       },
       expiresAt: deviceExpiresAt,
+      refreshExpiresAt: session.refreshExpiresAt,
+      staff: { id: created.admin.id, name: created.admin.name, role: created.admin.role, permissions: mergePermissions(created.admin.role, created.admin.permissions) },
     };
   }
 
@@ -406,6 +421,23 @@ export class AuthService {
     }
     return `${base}-${randomToken().slice(0, 8)}`;
   }
+}
+
+function generateInitialPin(): string {
+  return String(randomInt(1000, 10000));
+}
+
+function createSubscription(plan: SubscriptionPlan | undefined) {
+  const selectedPlan = plan ?? SubscriptionPlan.STARTER;
+  const start = new Date();
+  const end = subscriptionPeriodEnd(start);
+  return {
+    plan: selectedPlan,
+    status: 'TRIALING' as const,
+    monthlyAmount: subscriptionMonthlyAmount(selectedPlan),
+    currentPeriodStart: start,
+    currentPeriodEnd: end,
+  };
 }
 
 function slugify(value: string): string {

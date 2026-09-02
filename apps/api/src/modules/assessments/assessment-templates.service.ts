@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AssessmentAudience, AssessmentTemplateStatus } from '@prisma/client';
+import { AssessmentAudience, AssessmentTemplateStatus, Prisma } from '@prisma/client';
 import type { AuthenticatedUser } from '@/shared/auth/auth.types';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -36,7 +36,7 @@ export class AssessmentTemplatesService {
         audience: dto.audience ?? AssessmentAudience.STUDENT,
         status,
         active: status === AssessmentTemplateStatus.PUBLISHED,
-        fields,
+        fields: jsonFields(fields),
         createdByStaffId: user.staffMemberId,
       },
     });
@@ -62,7 +62,7 @@ export class AssessmentTemplatesService {
             status: AssessmentTemplateStatus.DRAFT,
             active: false,
             version: before.version + 1,
-            fields,
+            fields: jsonFields(fields),
             createdByStaffId: user.staffMemberId,
           },
         });
@@ -72,7 +72,7 @@ export class AssessmentTemplatesService {
     }
     const updated = await this.prisma.assessmentTemplate.update({
       where: { id: before.id },
-      data: { name: dto.name?.trim(), description: dto.description, audience: dto.audience, fields },
+      data: { name: dto.name?.trim(), description: dto.description, audience: dto.audience, fields: jsonFields(fields) },
     });
     await this.auditTemplateChange(user, 'assessment_templates.update_draft', updated.id, { version: updated.version });
     return updated;
@@ -120,7 +120,7 @@ export class AssessmentTemplatesService {
         version: (existing?.version ?? 0) + 1,
         status: AssessmentTemplateStatus.DRAFT,
         active: false,
-        fields,
+        fields: jsonFields(fields),
         createdByStaffId: user.staffMemberId,
       },
     });
@@ -141,4 +141,8 @@ export class AssessmentTemplatesService {
 
 function countQuestions(fields: Array<{ type?: unknown }>): number {
   return fields.filter((field) => field.type !== 'section').length;
+}
+
+function jsonFields(fields: unknown[]): Prisma.InputJsonValue {
+  return fields as Prisma.InputJsonValue;
 }

@@ -13,6 +13,7 @@ export class SubmitPublicIntakeDto {
   @IsString() phone!: string;
   @IsOptional() @IsEmail() email?: string;
   @IsString() emergencyContactName!: string;
+  @IsString() emergencyContactRelationship!: string;
   @IsString() emergencyContactPhone!: string;
   @IsBoolean() privacyAccepted!: boolean;
   @IsBoolean() truthfulnessAccepted!: boolean;

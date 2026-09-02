@@ -33,6 +33,7 @@ export class StudiosService {
         name: true,
         slug: true,
         email: true,
+        responsibleCpf: true,
         phone: true,
         whatsapp: true,
         zipCode: true,

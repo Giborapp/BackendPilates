@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, Length, Matches, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, Length, Matches, MinLength } from 'class-validator';
+import { SubscriptionPlan } from '@prisma/client';
 
 export class StudioLoginDto {
   @ApiProperty({ example: 'demo@pilates.local' })
@@ -39,15 +40,26 @@ export class StudioRegisterDto {
   @MinLength(8)
   password!: string;
 
-  @ApiProperty({ example: 'Marina Admin' })
+  @ApiProperty({ example: '12345678901', required: false })
+  @IsOptional()
   @IsString()
-  @Length(2, 120)
-  adminName!: string;
+  @Matches(/^\d{11}$/)
+  responsibleCpf?: string;
 
-  @ApiProperty({ example: '9071' })
+  @ApiProperty({ example: '12345678000199', required: false })
+  @IsOptional()
   @IsString()
-  @Matches(/^\d{4}$/)
-  adminPin!: string;
+  @Matches(/^\d{14}$/)
+  cnpj?: string;
+
+  @ApiProperty({ enum: SubscriptionPlan, required: false, default: SubscriptionPlan.STARTER })
+  @IsOptional()
+  @IsEnum(SubscriptionPlan)
+  subscriptionPlan?: SubscriptionPlan;
+
+  // Deprecated compatibility fields. New clients must not send these.
+  @IsOptional() @IsString() @Length(2, 120) adminName?: string;
+  @IsOptional() @IsString() @Matches(/^\d{4}$/) adminPin?: string;
 
   @IsOptional()
   @IsString()

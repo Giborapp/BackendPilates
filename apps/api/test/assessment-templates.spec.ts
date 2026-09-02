@@ -39,6 +39,13 @@ describe('assessment templates', () => {
     }
   });
 
+  it('keeps the Pilates anamnesis preset at exactly forty questions', () => {
+    const preset = ASSESSMENT_PRESETS.find((item) => item.key === 'initial_anamnesis');
+    expect(preset).toBeDefined();
+    expect(preset?.name).toBe('Anamnese inicial — Pilates');
+    expect(preset?.fields.filter((item) => item.type !== 'section')).toHaveLength(40);
+  });
+
   it('rejects an unknown preset', async () => {
     const context = createContext();
     await expect(context.service.clonePreset(user, 'unknown')).rejects.toBeInstanceOf(NotFoundException);

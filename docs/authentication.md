@@ -2,7 +2,7 @@
 
 ## Main endpoints
 
-- `POST /auth/studio/register`: creates a studio account, initial staff PINs, and a device session.
+- `POST /auth/studio/register`: creates a studio account, a default administrator, a device session and a trial subscription.
 - `POST /auth/studio/login`: validates studio e-mail/password and creates a device session.
 - `GET /auth/device/status`: returns connected studio/device status.
 - `POST /auth/pin/unlock`: unlocks a staff session using a PIN.
@@ -20,7 +20,14 @@ Access tokens are returned in the response body and should be kept only in memor
 
 ## Studio registration
 
-`POST /auth/studio/register` is public and rate limited. It accepts the studio name,
-studio e-mail/password, admin name/PIN, and optional professional/reception name/PIN pairs.
-PINs must follow the same PIN policy used by staff management and must be unique inside
-the new studio. Passwords, PINs, and device tokens are hashed before storage.
+`POST /auth/studio/register` is public and rate limited. The new experience accepts the
+studio name, responsible CPF, studio e-mail/password, optional CNPJ and a simulated monthly
+plan (`STARTER` or `PROFESSIONAL`). It does not ask for staff names or PINs. A default
+administrator is created and authenticated immediately; staff names and PINs are managed
+later by the administrator in the team area. Legacy admin/staff fields remain accepted only
+for compatibility with older clients.
+
+The selected plan creates a trial `Subscription` record. Billing is intentionally simulated:
+no payment provider, charge or external billing call is made. Use `GET /billing/subscription`
+and the admin-only simulation endpoint `PATCH /billing/subscription/simulate` for test flows.
+Passwords, PINs, refresh tokens and device tokens are hashed before storage.

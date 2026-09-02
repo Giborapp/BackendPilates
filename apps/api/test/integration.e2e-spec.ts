@@ -121,7 +121,7 @@ describe('integrated flows with real PostgreSQL', () => {
     expect(token).toBeTruthy();
     const details = await request(`/public/anamnese/${token}`);
     expect(details.status).toBe(200);
-    const submitted = await post(`/public/anamnese/${token}`, undefined as unknown as Session, { fullName: 'Fake Intake Student', birthDate: '1990-02-28', phone: '5511988887777', emergencyContactName: 'Fake Contact', emergencyContactPhone: '5511977776666', privacyAccepted: true, truthfulnessAccepted: true, answers: { main: 'Posture' } });
+    const submitted = await post(`/public/anamnese/${token}`, undefined as unknown as Session, { fullName: 'Fake Intake Student', birthDate: '1990-02-28', phone: '5511988887777', emergencyContactName: 'Fake Contact', emergencyContactRelationship: 'Mae', emergencyContactPhone: '5511977776666', privacyAccepted: true, truthfulnessAccepted: true, answers: { main: 'Posture' } });
     expect(submitted.response.status).toBe(201);
     const list = await request('/public/intakes', a);
     expect(list.status).toBe(200);
@@ -141,7 +141,7 @@ describe('integrated flows with real PostgreSQL', () => {
 
     const mergeInvite = await post('/public/intakes/invites', a, { type: 'NEW_STUDENT', templateId: a.templateId });
     const mergeToken = String(mergeInvite.data.url).split('/').pop();
-    await post(`/public/anamnese/${mergeToken}`, undefined as unknown as Session, { fullName: 'Fake Merge', birthDate: '1991-01-01', phone: '5511988881111', emergencyContactName: 'Fake Contact', emergencyContactPhone: '5511977771111', privacyAccepted: true, truthfulnessAccepted: true, answers: { main: 'Mobility' } });
+    await post(`/public/anamnese/${mergeToken}`, undefined as unknown as Session, { fullName: 'Fake Merge', birthDate: '1991-01-01', phone: '5511988881111', emergencyContactName: 'Fake Contact', emergencyContactRelationship: 'Mae', emergencyContactPhone: '5511977771111', privacyAccepted: true, truthfulnessAccepted: true, answers: { main: 'Mobility' } });
     const pendingMerge = (await (await request('/public/intakes', a)).json() as Json[]).find((item) => item.status === 'PENDING');
     expect(pendingMerge).toBeDefined();
     const merged = await post(`/public/intakes/${String(pendingMerge?.id)}/merge`, a, { studentId: a.students[0] });
@@ -149,7 +149,7 @@ describe('integrated flows with real PostgreSQL', () => {
 
     const rejectInvite = await post('/public/intakes/invites', a, { type: 'NEW_STUDENT', templateId: a.templateId });
     const rejectToken = String(rejectInvite.data.url).split('/').pop();
-    await post(`/public/anamnese/${rejectToken}`, undefined as unknown as Session, { fullName: 'Fake Reject', birthDate: '1992-01-01', phone: '5511988882222', emergencyContactName: 'Fake Contact', emergencyContactPhone: '5511977772222', privacyAccepted: true, truthfulnessAccepted: true, answers: { main: 'Strength' } });
+    await post(`/public/anamnese/${rejectToken}`, undefined as unknown as Session, { fullName: 'Fake Reject', birthDate: '1992-01-01', phone: '5511988882222', emergencyContactName: 'Fake Contact', emergencyContactRelationship: 'Mae', emergencyContactPhone: '5511977772222', privacyAccepted: true, truthfulnessAccepted: true, answers: { main: 'Strength' } });
     const pendingReject = (await (await request('/public/intakes', a)).json() as Json[]).find((item) => item.status === 'PENDING');
     const rejected = await post(`/public/intakes/${String(pendingReject?.id)}/reject`, a, { reason: 'Fake test rejection' });
     expect(rejected.response.status).toBe(201);
@@ -158,7 +158,7 @@ describe('integrated flows with real PostgreSQL', () => {
     const existingInvite = await post('/public/intakes/invites', a, { type: 'EXISTING_STUDENT', templateId: a.templateId, studentId: a.students[0] });
     expect(existingInvite.response.status).toBe(201);
     const existingToken = String(existingInvite.data.url).split('/').pop();
-    await post(`/public/anamnese/${existingToken}`, undefined as unknown as Session, { fullName: 'Fake Existing', birthDate: '1990-01-01', phone: '5511988883333', emergencyContactName: 'Fake Contact', emergencyContactPhone: '5511977773333', privacyAccepted: true, truthfulnessAccepted: true, answers: { main: 'Existing' } });
+    await post(`/public/anamnese/${existingToken}`, undefined as unknown as Session, { fullName: 'Fake Existing', birthDate: '1990-01-01', phone: '5511988883333', emergencyContactName: 'Fake Contact', emergencyContactRelationship: 'Mae', emergencyContactPhone: '5511977773333', privacyAccepted: true, truthfulnessAccepted: true, answers: { main: 'Existing' } });
     const existingRequest = (await prisma.publicIntakeRequest.findFirstOrThrow({ where: { inviteId: String(existingInvite.data.id) } }));
     expect(existingRequest.studentId).toBe(a.students[0]);
   });

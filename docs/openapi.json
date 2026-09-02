@@ -2549,6 +2549,54 @@
           "replacement-links"
         ]
       }
+    },
+    "/billing/subscription": {
+      "get": {
+        "operationId": "SubscriptionsController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/billing/subscription/simulate": {
+      "patch": {
+        "operationId": "SubscriptionsController_simulate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateSubscriptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "billing"
+        ]
+      }
     }
   },
   "info": {
@@ -2588,21 +2636,27 @@
             "type": "string",
             "example": "Senha@123456"
           },
-          "adminName": {
+          "responsibleCpf": {
             "type": "string",
-            "example": "Marina Admin"
+            "example": "12345678901"
           },
-          "adminPin": {
+          "cnpj": {
             "type": "string",
-            "example": "9071"
+            "example": "12345678000199"
+          },
+          "subscriptionPlan": {
+            "type": "string",
+            "enum": [
+              "STARTER",
+              "PROFESSIONAL"
+            ],
+            "default": "STARTER"
           }
         },
         "required": [
           "studioName",
           "email",
-          "password",
-          "adminName",
-          "adminPin"
+          "password"
         ]
       },
       "StudioLoginDto": {
@@ -2808,6 +2862,10 @@
         "properties": {}
       },
       "CreateReplacementLinkDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SimulateSubscriptionDto": {
         "type": "object",
         "properties": {}
       }

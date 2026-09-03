@@ -62,7 +62,7 @@ async function main() {
   start('pnpm', ['--filter', '@pilates-manager/web', 'start:local'], frontendDir);
   await waitFor(`${process.env.E2E_WEB_URL ?? 'http://127.0.0.1:2345'}/login`);
   await run('pnpm', ['--filter', '@pilates-manager/api', 'test:e2e:integration']);
-  await run('pnpm', ['exec', 'playwright', 'test', '--config', 'playwright.integration.config.ts'], frontendDir);
+  await run('pnpm', ['--filter', '@pilates-manager/web', 'exec', 'playwright', 'test', '--config', 'playwright.integration.config.ts'], frontendDir);
 }
 
 try {

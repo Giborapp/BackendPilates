@@ -403,6 +403,25 @@
         ]
       }
     },
+    "/studios/logo/{id}/content": {
+      "put": {
+        "operationId": "StudiosController_uploadLogoContent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "studios"
+        ]
+      }
+    },
     "/studios/logo": {
       "delete": {
         "operationId": "StudiosController_removeLogo",

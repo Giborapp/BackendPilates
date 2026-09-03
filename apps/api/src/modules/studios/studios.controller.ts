@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '@/shared/auth/jwt-auth.guard';
@@ -71,6 +71,16 @@ export class StudiosController {
   @RequirePermissions('studio_settings.manage')
   confirmLogoUpload(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
     return this.studios.confirmLogoUpload(user, params.id);
+  }
+
+  @Put('logo/:id/content')
+  @RequirePermissions('studio_settings.manage')
+  uploadLogoContent(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param() params: IdParamDto,
+    @Req() request: Request,
+  ) {
+    return this.studios.uploadLogoContent(user, params.id, request);
   }
 
   @Delete('logo')

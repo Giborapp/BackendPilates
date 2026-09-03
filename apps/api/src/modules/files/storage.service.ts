@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { Readable } from 'node:stream';
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
 import {
@@ -159,16 +160,41 @@ export class StorageService {
     if (contentLength !== payload.size) {
       throw new UnauthorizedException('Invalid upload content length');
     }
+    await this.writeObject({
+      storageKey: payload.storageKey,
+      mimeType: payload.mimeType,
+      size: payload.size,
+      body: request,
+    });
+  }
 
-    const objectPath = this.localObjectPath(payload.storageKey);
+  async writeObject(input: {
+    storageKey: string;
+    mimeType: string;
+    size: number;
+    body: NodeJS.ReadableStream;
+  }): Promise<void> {
+    if (this.config.storageDriver !== 'local') {
+      const client = this.requireS3Client();
+      await client.send(new PutObjectCommand({
+        Bucket: this.config.s3Bucket,
+        Key: input.storageKey,
+        ContentType: input.mimeType,
+        ContentLength: input.size,
+        Body: input.body as unknown as Readable,
+      }));
+      return;
+    }
+
+    const objectPath = this.localObjectPath(input.storageKey);
     await mkdir(dirname(objectPath), { recursive: true });
     const handle = await open(objectPath, 'w');
     let written = 0;
     try {
-      for await (const chunk of request) {
+      for await (const chunk of input.body) {
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         written += buffer.length;
-        if (written > payload.size) {
+        if (written > input.size) {
           throw new UnauthorizedException('Upload exceeded declared size');
         }
         await handle.write(buffer);
@@ -179,13 +205,13 @@ export class StorageService {
       throw error;
     }
     await handle.close();
-    if (written !== payload.size) {
+    if (written !== input.size) {
       await rm(objectPath, { force: true });
       throw new UnauthorizedException('Incomplete upload');
     }
     await writeFile(
-      this.localMetaPath(payload.storageKey),
-      JSON.stringify({ mimeType: payload.mimeType, size: payload.size }),
+      this.localMetaPath(input.storageKey),
+      JSON.stringify({ mimeType: input.mimeType, size: input.size }),
       'utf8',
     );
   }

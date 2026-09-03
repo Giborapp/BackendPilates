@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { FileAssetStatus, FileOwnerType, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import type { Request } from 'express';
 import type { AuthenticatedUser } from '@/shared/auth/auth.types';
 import { PrismaService } from '@/shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -248,6 +249,42 @@ export class StudiosService {
     return withoutStorageKey(updated);
   }
 
+  async uploadLogoContent(user: AuthenticatedUser, id: string, request: Request) {
+    const file = await this.prisma.fileAsset.findFirstOrThrow({
+      where: {
+        id,
+        studioId: user.studioId,
+        ownerType: FileOwnerType.STUDIO,
+        ownerId: user.studioId,
+        status: FileAssetStatus.PENDING,
+        deletedAt: null,
+      },
+    });
+    const contentType = readSingleHeader(request.headers['content-type']);
+    if (contentType !== file.mimeType) {
+      throw new BadRequestException('Uploaded logo content type does not match declared metadata');
+    }
+    const contentLength = Number(readSingleHeader(request.headers['content-length']) ?? '0');
+    if (contentLength !== file.size) {
+      throw new BadRequestException('Uploaded logo size does not match declared metadata');
+    }
+    await this.storage.writeObject({
+      storageKey: file.storageKey,
+      mimeType: file.mimeType,
+      size: file.size,
+      body: request,
+    });
+    await this.audit.record({
+      studioId: user.studioId,
+      actorStaffId: user.staffMemberId,
+      action: 'studios.logo.content_uploaded',
+      entityType: 'FileAsset',
+      entityId: file.id,
+      metadata: { mimeType: file.mimeType, size: file.size },
+    });
+    return { uploaded: true };
+  }
+
   async removeLogo(user: AuthenticatedUser) {
     const studio = await this.prisma.studio.findUniqueOrThrow({
       where: { id: user.studioId },
@@ -347,4 +384,8 @@ function sanitizeOriginalName(value: string | undefined): string | undefined {
     .trim()
     .slice(0, 120);
   return sanitized && sanitized.length > 0 ? sanitized : undefined;
+}
+
+function readSingleHeader(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }

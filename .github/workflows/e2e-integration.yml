@@ -47,7 +47,7 @@ jobs:
       REFRESH_TOKEN_SECRET: e2e-refresh-secret-32-characters-minimum
       DEVICE_TOKEN_SECRET: e2e-device-secret-32-characters-minimum
       STORAGE_DRIVER: local
-      LOCAL_STORAGE_PATH: ${{ runner.temp }}/pilates-e2e-storage
+      LOCAL_STORAGE_PATH: /tmp/pilates-e2e-storage
       FILE_UPLOAD_MAX_BYTES: "10000000"
       FRONTEND_DIR: ${{ github.workspace }}/PilatesFront
       NEXT_PUBLIC_API_URL: http://127.0.0.1:3001

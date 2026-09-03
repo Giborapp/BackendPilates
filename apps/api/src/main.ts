@@ -8,6 +8,14 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { AppConfigService } from './shared/config/app-config.service';
 
+function isAllowedCorsOrigin(origin: string | undefined, allowedOrigins: string[]): boolean {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) return true;
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
+  return false;
+}
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const config = app.get(AppConfigService);
@@ -15,7 +23,9 @@ async function bootstrap(): Promise<void> {
   app.use(helmet());
   app.use(cookieParser());
   app.enableCors({
-    origin: config.corsOrigins,
+    origin: (origin, callback) => {
+      callback(null, isAllowedCorsOrigin(origin, config.corsOrigins));
+    },
     credentials: true,
   });
   app.useGlobalPipes(

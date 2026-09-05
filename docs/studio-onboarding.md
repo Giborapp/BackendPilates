@@ -6,13 +6,15 @@ Studio registration keeps the first screen short:
 - studio e-mail;
 - password;
 - responsible CPF;
+- administrator PIN;
 - optional CNPJ;
 - simulated monthly plan.
 
 After registration, the default administrator is authenticated immediately and
-the app shows a resumable onboarding assistant. Staff names and PINs are managed
-later by the administrator in the team area. Existing studios receive compatible
-defaults and can keep using the system before completing optional fields.
+the app shows a resumable onboarding assistant. Additional staff names and PINs
+are managed later by the administrator in the team area. Existing studios receive
+compatible defaults and can keep using the system before completing optional
+fields.
 
 ## Onboarding state
 

@@ -9,7 +9,7 @@ export class StudioLoginDto {
 
   @ApiProperty({ example: 'Demo@123456' })
   @IsString()
-  @MinLength(8)
+  @MinLength(6)
   password!: string;
 
   @IsOptional()
@@ -37,7 +37,8 @@ export class StudioRegisterDto {
 
   @ApiProperty({ example: 'Senha@123456' })
   @IsString()
-  @MinLength(8)
+  @MinLength(6)
+  @Matches(/^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{6,}$/)
   password!: string;
 
   @ApiProperty({ example: '12345678901', required: false })

@@ -22,10 +22,11 @@ Access tokens are returned in the response body and should be kept only in memor
 
 `POST /auth/studio/register` is public and rate limited. The new experience accepts the
 studio name, responsible CPF, studio e-mail/password, administrator PIN, optional CNPJ and
-a simulated monthly plan (`STARTER` or `PROFESSIONAL`). A default administrator is created
-and authenticated immediately; additional staff names and PINs are managed later by the
-administrator in the team area. Legacy extra staff fields remain accepted only for
-compatibility with older clients.
+a simulated monthly plan (`STARTER` or `PROFESSIONAL`). The registration password must have
+at least 6 characters, one uppercase letter and one special character. A default
+administrator is created and authenticated immediately; additional staff names and PINs are
+managed later by the administrator in the team area. Legacy extra staff fields remain
+accepted only for compatibility with older clients.
 
 The selected plan creates a trial `Subscription` record. Billing is intentionally simulated:
 no payment provider, charge or external billing call is made. Use `GET /billing/subscription`

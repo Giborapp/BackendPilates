@@ -1,16 +1,16 @@
-# Operacao e deploy
+# Operação e deploy
 
 ## Variaveis
 
-O backend utiliza `NODE_ENV`, `PORT`, `DATABASE_URL`, `CORS_ORIGINS`, `PUBLIC_WEB_URL`, os segredos de sessao (`ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `DEVICE_TOKEN_SECRET`), suas expiracoes, `COOKIE_DOMAIN`, `STORAGE_DRIVER`, `LOCAL_STORAGE_PATH`, `FILE_UPLOAD_MAX_BYTES`, `BOOTSTRAP_SETUP_TOKEN` e as variaveis S3/R2 `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` e `S3_SECRET_ACCESS_KEY`.
+O backend utiliza `NODE_ENV`, `PORT`, `DATABASE_URL`, `CORS_ORIGINS`, `PUBLIC_WEB_URL`, os segredos de sessão (`ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `DEVICE_TOKEN_SECRET`), suas expirações, `COOKIE_DOMAIN`, `STORAGE_DRIVER`, `LOCAL_STORAGE_PATH`, `FILE_UPLOAD_MAX_BYTES`, `BOOTSTRAP_SETUP_TOKEN` e as variáveis S3/R2 `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` e `S3_SECRET_ACCESS_KEY`.
 
-`TURNSTILE_SECRET_KEY` e opcional no backend. Quando configurado, o endpoint publico exige um token Turnstile valido. O frontend pode receber `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; a chave secreta nunca deve ser configurada na Vercel.
+`TURNSTILE_SECRET_KEY` é opcional no backend. Quando configurado, o endpoint público exige um token Turnstile válido. O frontend pode receber `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; a chave secreta nunca deve ser configurada na Vercel.
 
 ## R2 e arquivos
 
-Use `STORAGE_DRIVER=s3` com bucket privado. O endpoint configurado em `S3_ENDPOINT` deve ser o endpoint S3 da conta R2; `S3_REGION` normalmente e `auto`. O sistema gera URLs PUT e GET temporarias e confirma o objeto antes de disponibiliza-lo. Arquivos gerais respeitam `FILE_UPLOAD_MAX_BYTES` (10 MB por padrao); logos aceitam somente PNG/WebP e 2 MB.
+Use `STORAGE_DRIVER=s3` com bucket privado. O endpoint configurado em `S3_ENDPOINT` deve ser o endpoint S3 da conta R2; `S3_REGION` normalmente é `auto`. O sistema gera URLs PUT e GET temporárias e confirma o objeto antes de disponibilizá-lo. Arquivos gerais respeitam `FILE_UPLOAD_MAX_BYTES` (10 MB por padrão); logos aceitam somente PNG/WebP e 2 MB.
 
-Configure CORS do R2 para os dominios do frontend que fazem upload, permitindo `PUT`, `GET`, `HEAD` e os headers `Content-Type`, `Content-Length`, `ETag`. Nunca habilite acesso publico ao bucket. Rotacione as chaves substituindo ambas as variaveis no Render e removendo as antigas no Cloudflare.
+Configure CORS do R2 para os domínios do frontend que fazem upload, permitindo `PUT`, `GET`, `HEAD` e os headers `Content-Type`, `Content-Length`, `ETag`. Nunca habilite acesso público ao bucket. Rotacione as chaves substituindo ambas as variáveis no Render e removendo as antigas no Cloudflare.
 
 ## Render
 
@@ -20,20 +20,20 @@ Start command: `pnpm --filter @pilates-manager/api start`.
 
 Pre-Deploy Command: `pnpm prisma:deploy`.
 
-Antes do pre-deploy, faça backup do PostgreSQL e revise, nesta ordem, as migrations `20260826170000_add_studio_onboarding_branding`, `20260827100000_add_assessment_audience_status`, `20260827120000_add_public_intake_requests`, `20260827130000_add_student_plan_weekly_snapshot` e `20260827140000_add_public_replacement_links`. Verifique `/health` depois do deploy. Nao execute seed em producao.
+Antes do pré-deploy, faça backup do PostgreSQL e revise, nesta ordem, as migrations `20260826170000_add_studio_onboarding_branding`, `20260827100000_add_assessment_audience_status`, `20260827120000_add_public_intake_requests`, `20260827130000_add_student_plan_weekly_snapshot` e `20260827140000_add_public_replacement_links`. Verifique `/health` depois do deploy. Não execute seed em produção.
 
 ## Vercel e Turnstile
 
-Configure `NEXT_PUBLIC_API_URL` com a URL da API e, quando o widget estiver ativo, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. O backend deve conter `PUBLIC_WEB_URL` e `TURNSTILE_SECRET_KEY`. A origem do frontend deve estar em `CORS_ORIGINS`. Em desenvolvimento, sem a chave secreta, a validacao Turnstile e desativada.
+Configure `NEXT_PUBLIC_API_URL` com a URL da API e, quando o widget estiver ativo, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. O backend deve conter `PUBLIC_WEB_URL` e `TURNSTILE_SECRET_KEY`. A origem do frontend deve estar em `CORS_ORIGINS`. Em desenvolvimento, sem a chave secreta, a validação Turnstile é desativada.
 
 ## Rollback
 
-Rollback da aplicacao pode apontar o Render para o commit anterior. Migrations que criam tabelas/colunas devem permanecer aplicadas; nao reescreva nem apague migrations. Para uma migration com efeito incompatível, restaure o backup em uma janela controlada e reverta a aplicacao para uma versao compatível, validando primeiro em ambiente de teste.
+Rollback da aplicação pode apontar o Render para o commit anterior. Migrations que criam tabelas/colunas devem permanecer aplicadas; não reescreva nem apague migrations. Para uma migration com efeito incompatível, restaure o backup em uma janela controlada e reverta a aplicação para uma versão compatível, validando primeiro em ambiente de teste.
 
 ## Checklist
 
 - [ ] Backup PostgreSQL exportado e testado.
-- [ ] Migrations revisadas na ordem e ainda nao aplicadas sem aprovacao.
+- [ ] Migrations revisadas na ordem e ainda não aplicadas sem aprovação.
 - [ ] Bucket R2 privado e CORS revisado.
 - [ ] Chaves R2 rotacionadas sem aparecer em logs.
 - [ ] Variaveis Render/Vercel conferidas sem imprimir valores.

@@ -325,7 +325,7 @@ export class RecurringSchedulesService {
         select: { id: true, unitId: true },
       });
       if (unitId && unitId !== room.unitId) {
-        throw new BadRequestException('Sala nao pertence a unidade informada.');
+        throw new BadRequestException('Sala não pertence à unidade informada.');
       }
       return { unitId: room.unitId, roomId: room.id };
     }

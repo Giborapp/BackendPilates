@@ -22,7 +22,7 @@ const DEMO_STAFF: DemoStaff[] = [
   { name: 'Admin Demo', role: Role.ADMIN, pin: '9071' },
   { name: 'Ana Profissional', role: Role.PROFESSIONAL, pin: '2580' },
   { name: 'Bruno Profissional', role: Role.PROFESSIONAL, pin: '3690' },
-  { name: 'Recepcao Demo', role: Role.RECEPTION, pin: '7410' },
+  { name: 'Recepção Demo', role: Role.RECEPTION, pin: '7410' },
 ];
 
 @Injectable()

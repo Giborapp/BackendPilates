@@ -1,4 +1,4 @@
-# Modelos de anamnese e avaliacao
+# Modelos de anamnese e avaliação
 
 Modelos pertencem ao estúdio autenticado e usam `AssessmentTemplate`. O público pode ser `STUDENT` ou `PROFESSIONAL`.
 
